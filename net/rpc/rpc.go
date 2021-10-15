@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"moul.io/http2curl"
 )
 
 // Version ...
@@ -193,6 +195,10 @@ func (c *Client) syncRequest(msg *jsonRPCMessage) (buf []byte, err error) {
 	req := c.Req.WithContext(context.Background())
 	req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	req.ContentLength = int64(len(body))
+
+	command, _ := http2curl.GetCurlCommand(req)
+	logrus.WithField("tags", "request").Debug(command)
+
 	res, err := c.Client.Do(req)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -289,6 +295,10 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCMessage) ([]byte, error) {
 	req := c.Req.WithContext(context.Background())
 	req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	req.ContentLength = int64(len(body))
+
+	command, _ := http2curl.GetCurlCommand(req)
+	logrus.WithField("tags", "request").Debug(command)
+
 	res, err := c.Client.Do(req)
 	if err != nil {
 		return nil, errors.WithStack(err)

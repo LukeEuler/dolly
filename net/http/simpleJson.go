@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"moul.io/http2curl"
 )
 
 // SimpleJSON ...
@@ -41,7 +43,15 @@ func (s *SimpleJSON) SetTransport(ts http.RoundTripper) {
 
 // Get ...
 func (s *SimpleJSON) Get(tail string, object interface{}) error {
-	resp, err := s.client.Get(s.url + tail)
+	req, err := http.NewRequest("GET", s.url+tail, nil)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	command, _ := http2curl.GetCurlCommand(req)
+	logrus.WithField("tags", "request").Debug(command)
+
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -62,7 +72,17 @@ func (s *SimpleJSON) Post(tail string, in, out interface{}) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	resp, err := s.client.Post(s.url+tail, "application/json", bytes.NewReader(marshal))
+
+	req, err := http.NewRequest("POST", s.url+tail, bytes.NewReader(marshal))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	command, _ := http2curl.GetCurlCommand(req)
+	logrus.WithField("tags", "request").Debug(command)
+
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return errors.WithStack(err)
 	}

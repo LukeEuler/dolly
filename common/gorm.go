@@ -37,6 +37,18 @@ func OpenGorm(connectStr string) (*gorm.DB, error) {
 	return db, nil
 }
 
+// StopDB stop gorm db
+func StopDB(db *gorm.DB) error {
+	if db == nil {
+		return nil
+	}
+	err := db.Close()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // WithTransaction 简单封装事务处理
 func WithTransaction(db *gorm.DB, f func(db *gorm.DB) error) error {
 	dbTx := db.Begin()

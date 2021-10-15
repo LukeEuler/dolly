@@ -3,11 +3,14 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"moul.io/http2curl"
 )
 
 // ResultJSON ...
@@ -54,7 +57,15 @@ func (r ResultJSON) SetTransport(ts http.RoundTripper) {
 
 // Get ...
 func (r *ResultJSON) Get(tail string, object interface{}) error {
-	resp, err := r.client.Get(r.url + tail)
+	req, err := http.NewRequest("GET", r.url+tail, nil)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	command, _ := http2curl.GetCurlCommand(req)
+	logrus.WithField("tags", "request").Debug(command)
+
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -67,7 +78,17 @@ func (r *ResultJSON) Post(tail string, in, out interface{}) error {
 	if err != nil {
 		return err
 	}
-	resp, err := r.client.Post(r.url+tail, "application/json", bytes.NewReader(marshal))
+
+	req, err := http.NewRequest("POST", r.url+tail, bytes.NewReader(marshal))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	command, _ := http2curl.GetCurlCommand(req)
+	logrus.WithField("tags", "request").Debug(command)
+
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return err
 	}
