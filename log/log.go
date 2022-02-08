@@ -2,12 +2,35 @@ package log
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"runtime"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 )
+
+var Entry *logrus.Entry
+
+func init() {
+	Entry = logrus.NewEntry(logrus.New())
+	Entry.Logger.SetReportCaller(true)
+	Entry.Logger.SetLevel(logrus.DebugLevel)
+	Entry.Logger.SetFormatter(&logrus.TextFormatter{
+		DisableTimestamp: false,
+		CallerPrettyfier: callerPrettyfier,
+	})
+	// Entry.Data["devlang"] = "golang"
+}
+
+func AddField(key, value string) {
+	if len(key) == 0 {
+		return
+	}
+	if len(value) == 0 {
+		return
+	}
+	Entry = Entry.WithField(key, value)
+}
 
 func callerPrettyfier(f *runtime.Frame) (string, string) {
 	fileName := fmt.Sprintf("%s:%d", f.File, f.Line)
@@ -27,7 +50,7 @@ func callerFormatter(f *runtime.Frame) string {
 
 // DisableDefaultConsole 取消默认的控制台输出
 func DisableDefaultConsole() {
-	logrus.SetOutput(ioutil.Discard)
+	Entry.Logger.SetOutput(io.Discard)
 }
 
 func getHookLevel(level int) []logrus.Level {

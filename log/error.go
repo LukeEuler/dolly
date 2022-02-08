@@ -17,7 +17,7 @@ func Err(err error) {
 func ErrWithFields(err error, inFields logrus.Fields) {
 	fields := getFieldsCopy(inFields)
 	if err == nil {
-		logrus.WithFields(fields).Errorf("nil error!!!\n%s", debug.Stack())
+		Entry.WithFields(fields).Errorf("nil error!!!\n%s", debug.Stack())
 		// // 这个方法是从 errors.WithStack() 抄来的，但是没有 debug.Stack() 简单，而且看不到子协程的来源
 		// const depth = 32
 		// var pcs [depth]uintptr
@@ -30,7 +30,7 @@ func ErrWithFields(err error, inFields logrus.Fields) {
 		// for _, f := range lf {
 		// 	info += fmt.Sprintf("\n%+v", f)
 		// }
-		// logrus.WithFields(fields).Errorf("nil error!!!\n%s", info)
+		// Entry.WithFields(fields).Errorf("nil error!!!\n%s", info)
 		return
 	}
 
@@ -65,16 +65,16 @@ func ErrWithFields(err error, inFields logrus.Fields) {
 		}
 		fields["stack"] = stack
 
-		logrus.WithFields(fields).Error(info)
+		Entry.WithFields(fields).Error(info)
 		return
 	}
-	logrus.WithFields(fields).Errorf("%#v", err)
+	Entry.WithFields(fields).Errorf("%#v", err)
 }
 
 // Fatal = Err + exit(1)
 func Fatal(err error) {
 	Err(err)
-	logrus.Exit(1)
+	Entry.Logger.Exit(1)
 }
 
 func getFieldsCopy(in logrus.Fields) (out logrus.Fields) {

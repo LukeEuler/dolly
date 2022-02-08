@@ -11,7 +11,7 @@ import (
 // AddConsoleOut ...
 func AddConsoleOut(level int) {
 	DisableDefaultConsole()
-	logrus.AddHook(newConsoleHook(level))
+	Entry.Logger.AddHook(newConsoleHook(level))
 }
 
 type consoleHook struct {

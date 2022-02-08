@@ -54,7 +54,7 @@ func AddFileOut(logFilePath string, level, days int) (err error) {
 		rotate: logf,
 	}
 
-	logrus.AddHook(hook)
+	Entry.Logger.AddHook(hook)
 	return
 }
 
