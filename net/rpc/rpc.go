@@ -6,9 +6,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/LukeEuler/dolly/log"
 )
 
-// Version ...
 type Version string
 
 // json rpc version
@@ -27,7 +27,6 @@ const (
 	JSONRPCVersion2 Version = "2.0"
 )
 
-// Client ...
 type Client struct {
 	version        Version
 	Client         *http.Client
@@ -50,19 +49,19 @@ func Dial(url string, user string, pass string, certs []byte, version Version) (
 	c.Req.SetBasicAuth(user, pass)
 	c.User = user
 	c.Pass = pass
-	return c, err
+	return c, nil
 }
 
 // DialWithoutAuth ...
 func DialWithoutAuth(url string, certs []byte, version Version) (*Client, error) {
 	req, err := http.NewRequest("POST", url, nil)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err = errors.WithStack(err); err != nil {
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	ts := DefaultTs
+	ts := DefaultTS
 
 	// Configure TLS if needed.
 	var tlsConfig *tls.Config
@@ -119,14 +118,14 @@ func (c *Client) SetResultHandler(handler func([]byte, interface{}) error) {
 // DialInsecureSkipVerify make client ignore server's certificate chain and host name
 func DialInsecureSkipVerify(url string, user string, pass string, version Version) (*Client, error) {
 	req, err := http.NewRequest("POST", url, nil)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err = errors.WithStack(err); err != nil {
+		return nil, err
 	}
 	req.SetBasicAuth(user, pass)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	ts := DefaultTs
+	ts := DefaultTS
 
 	// Configure TLS if needed.
 	tlsConfig := &tls.Config{
@@ -152,19 +151,16 @@ func DialInsecureSkipVerify(url string, user string, pass string, version Versio
 
 // DefaultHandler default way to unmarshal
 func DefaultHandler(res []byte, target interface{}) error {
-	resMsg := jsonRPCMessage{}
+	resMsg := jsonRPCReceiveMessage{}
 	err := json.Unmarshal(res, &resMsg)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "unmarshaling result: %s", string(res))
 	}
 	if resMsg.Error != nil {
-		return resMsg.Error
+		return errors.WithStack(resMsg.Error)
 	}
 	err = json.Unmarshal(resMsg.Result, &target)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
+	return errors.Wrapf(err, "unmarshaling josn rpc result: %s", string(res))
 }
 
 // SyncCallObject ...
@@ -188,54 +184,60 @@ func (c *Client) SyncCall(res interface{}, method string, params ...interface{})
 	return c.SyncCallObject(res, method, params)
 }
 
-func (c *Client) syncRequest(msg *jsonRPCMessage) (buf []byte, err error) {
+func (c *Client) syncRequest(msg *jsonRPCSendMessage) (buf []byte, err error) {
 	body, err := json.Marshal(msg)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err = errors.WithStack(err); err != nil {
+		return nil, err
 	}
 	req := c.Req.WithContext(context.Background())
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	req.Body = io.NopCloser(bytes.NewBuffer(body))
 	req.ContentLength = int64(len(body))
 
 	command, _ := http2curl.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	res, err := c.Client.Do(req)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err = errors.WithStack(err); err != nil {
+		return nil, err
 	}
 	defer res.Body.Close()
-	buf, err = ioutil.ReadAll(res.Body)
+	buf, err = io.ReadAll(res.Body)
 	if res.StatusCode != 200 {
-		return nil, errors.Errorf("http status code err: %d, msg: %s", res.StatusCode, string(buf))
+		bodyStr := string(buf)
+		if len(buf) > 500 {
+			bodyStr = string(buf[:150])
+			bodyStr = strings.ToValidUTF8(bodyStr, "") + "   凸(゜皿゜メ)"
+		}
+		return nil, errors.Errorf("http status code err: %d, msg: %s", res.StatusCode, bodyStr)
 	}
-	return buf, errors.WithStack(err)
+	return
 }
 
 // BatchSyncCall batch SyncCall and will cut batch request when enableMaxBatch is true and 0 < maxBatchNum < len(batch request)
-func (c *Client) BatchSyncCall(batch []BatchElem) error {
-	if len(batch) == 0 {
-		return nil
+func (c *Client) BatchSyncCall(batch []BatchElem) (err error) {
+	totalLength := len(batch)
+	if totalLength == 0 {
+		return
 	}
-	var err error
-	reqMsgs := make([]*jsonRPCMessage, len(batch))
-	for i := range reqMsgs {
-		reqMsgs[i], err = c.newMessage(batch[i].Method, batch[i].Args)
+	requestList := make([]*jsonRPCSendMessage, totalLength)
+	for i := range requestList {
+		requestList[i], err = c.newMessage(batch[i].Method, batch[i].Args)
 		if err != nil {
-			return err
+			return
 		}
 	}
-	batchNum := len(reqMsgs)
+	batchNum := len(requestList)
 	var buf []byte
-	resMsgs := make([]*jsonRPCMessage, 0)
+	responseList := make([]*jsonRPCReceiveMessage, 0, totalLength)
 	if !c.enableMaxBatch || c.maxBatchNum <= 0 || batchNum <= c.maxBatchNum {
-		buf, err = c.batchSyncRequest(reqMsgs)
+		buf, err = c.batchSyncRequest(requestList)
 		if err != nil {
-			return err
+			return
 		}
-		err = json.Unmarshal(buf, &resMsgs)
+		err = json.Unmarshal(buf, &responseList)
 		if err != nil {
-			return errors.WithStack(err)
+			err = errors.Errorf("can not paste the content into []*jsonRPCReceiveMessage: %s", string(buf))
+			return
 		}
 	} else {
 		for i, j := 0, c.maxBatchNum; true; {
@@ -243,16 +245,18 @@ func (c *Client) BatchSyncCall(batch []BatchElem) error {
 				j = batchNum
 			}
 
-			buf, err = c.batchSyncRequest(reqMsgs[i:j])
+			log.Entry.Debugf("try batch [%d,%d], total %d", i, j, batchNum)
+			buf, err = c.batchSyncRequest(requestList[i:j])
 			if err != nil {
-				return err
+				return
 			}
-			tempResMsgs := make([]*jsonRPCMessage, 0)
+			tempResMsgs := make([]*jsonRPCReceiveMessage, 0)
 			err = json.Unmarshal(buf, &tempResMsgs)
 			if err != nil {
-				return errors.WithStack(err)
+				err = errors.Errorf("can not paste the content into []*jsonRPCReceiveMessage: %s", string(buf))
+				return
 			}
-			resMsgs = append(resMsgs, tempResMsgs...)
+			responseList = append(responseList, tempResMsgs...)
 			i += c.maxBatchNum
 			j += c.maxBatchNum
 			if i >= batchNum {
@@ -261,65 +265,98 @@ func (c *Client) BatchSyncCall(batch []BatchElem) error {
 		}
 	}
 
+	return handleBatchResult(batch, requestList, responseList)
+}
+
+func handleBatchResult(batch []BatchElem, requestList []*jsonRPCSendMessage, responseList []*jsonRPCReceiveMessage) error {
+	responseMap, err := getResponseMap(responseList)
+	if err != nil {
+		return err
+	}
+
+	var elem *BatchElem
+	var req *jsonRPCSendMessage
+	var res *jsonRPCReceiveMessage
+	var ok bool
 	for i := range batch {
-		elem := &batch[i]
-		req := reqMsgs[i]
-		var res *jsonRPCMessage
-		for _, r := range resMsgs {
-			if r.ID == req.ID {
-				res = r
-				break
-			}
+		elem = &batch[i]
+		req = requestList[i]
+		res, ok = responseMap[req.ID]
+		if !ok {
+			return errors.Errorf("can not found result, resuest id %d, method %s, params %v", req.ID, req.Method, req.Params)
 		}
-		if res != nil {
-			if res.Error != nil {
-				elem.Error = res.Error
-				continue
-			}
-			if len(res.Result) == 0 {
-				elem.Error = fmt.Errorf("not found")
-				continue
-			}
-			elem.Error = json.Unmarshal(res.Result, elem.Result)
-			continue
+		if res == nil {
+			elem.Error = errors.New("not found response")
+			return elem.Error
 		}
-		elem.Error = errors.New("not found response")
+		if res.Error != nil {
+			elem.Error = errors.WithStack(res.Error)
+			return elem.Error
+		}
+		if len(res.Result) == 0 {
+			elem.Error = errors.New("not found")
+			return elem.Error
+		}
+		elem.Error = errors.WithStack(json.Unmarshal(res.Result, elem.Result))
+		if elem.Error != nil {
+			return elem.Error
+		}
 	}
 	return nil
 }
 
-func (c *Client) batchSyncRequest(msg []*jsonRPCMessage) ([]byte, error) {
+func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err error) {
 	body, err := json.Marshal(msg)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err = errors.WithStack(err); err != nil {
+		return nil, err
 	}
 	req := c.Req.WithContext(context.Background())
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	req.Body = io.NopCloser(bytes.NewBuffer(body))
 	req.ContentLength = int64(len(body))
 
-	command, _ := http2curl.GetCurlCommand(req)
-	log.Entry.WithField("tags", "request").Debug(command)
+	if len(msg) <= 5 {
+		command, _ := http2curl.GetCurlCommand(req)
+		log.Entry.WithField("tags", "request").Debug(command)
+	}
 
 	res, err := c.Client.Do(req)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err = errors.WithStack(err); err != nil {
+		return nil, err
 	}
 	defer res.Body.Close()
-	buf, err := ioutil.ReadAll(res.Body)
+	buf, err = io.ReadAll(res.Body)
 	if res.StatusCode != 200 {
-		return nil, errors.Errorf("http status code err: %d, msg: %s", res.StatusCode, string(buf))
+		bodyStr := string(buf)
+		if len(buf) > 500 {
+			bodyStr = string(buf[:150])
+			bodyStr = strings.ToValidUTF8(bodyStr, "") + "   凸(゜皿゜メ)"
+		}
+		return nil, errors.Errorf("http status code err: %d, msg: %s", res.StatusCode, bodyStr)
 	}
-	return buf, errors.WithStack(err)
+	return
 }
 
-func (c *Client) newMessage(method string, param interface{}) (*jsonRPCMessage, error) {
+func (c *Client) newMessage(method string, param interface{}) (*jsonRPCSendMessage, error) {
 	params, err := json.Marshal(param)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err = errors.WithStack(err); err != nil {
+		return nil, err
 	}
-	return &jsonRPCMessage{Version: string(c.version), ID: c.nextID(), Method: method, Params: params}, nil
+	return &jsonRPCSendMessage{Version: string(c.version), ID: c.nextID(), Method: method, Params: params}, nil
 }
 
 func (c *Client) nextID() uint64 {
 	return atomic.AddUint64(&c.idCounter, 1)
+}
+
+func getResponseMap(responseList []*jsonRPCReceiveMessage) (result map[uint64]*jsonRPCReceiveMessage, err error) {
+	length := len(responseList)
+	result = make(map[uint64]*jsonRPCReceiveMessage, length)
+	for i := 0; i < length; i++ {
+		responseList[i].id, err = strconv.ParseUint(string(responseList[i].ID), 10, 64)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can not parse %s as uint64", string(responseList[i].ID))
+		}
+		result[responseList[i].id] = responseList[i]
+	}
+	return result, nil
 }

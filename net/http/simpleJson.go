@@ -3,8 +3,9 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,22 +14,31 @@ import (
 	"github.com/LukeEuler/dolly/log"
 )
 
+type resultHandler func(body []byte, destination interface{}) error
+
 // SimpleJSON ...
 type SimpleJSON struct {
 	client *http.Client
 	url    string
+
+	handler resultHandler // 用以更灵活的支持各式返回结果,目前仅不支持批量请求，需要时请自行修改BatchSyncCall并充分测试
 }
 
 // NewSimpleJSON ...
 func NewSimpleJSON(url string) *SimpleJSON {
-	ts := DefaultTs
+	ts := DefaultTS
 	return &SimpleJSON{
 		client: &http.Client{
 			Timeout:   5 * time.Second,
 			Transport: ts,
 		},
-		url: url,
+		url:     url,
+		handler: DefaultSimpleJSONHandler,
 	}
+}
+
+func (s *SimpleJSON) GetURL() string {
+	return s.url
 }
 
 // SetTimeout ste http timeout
@@ -42,8 +52,13 @@ func (s *SimpleJSON) SetTransport(ts http.RoundTripper) {
 	s.client.Transport = ts
 }
 
+func (s *SimpleJSON) SetResultHandler(handler resultHandler) *SimpleJSON {
+	s.handler = handler
+	return s
+}
+
 // Get ...
-func (s *SimpleJSON) Get(tail string, object interface{}) error {
+func (s *SimpleJSON) Get(tail string, out interface{}) error {
 	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {
 		return errors.WithStack(err)
@@ -56,15 +71,25 @@ func (s *SimpleJSON) Get(tail string, object interface{}) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return errors.Errorf("http status %d != 200", resp.StatusCode)
-	}
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	return handleResponseForSimpleJSON(resp, out, s.handler)
+}
+
+func (s *SimpleJSON) GetWithHeader(hKey, hValue, tail string, out interface{}) error {
+	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return errors.WithStack(json.Unmarshal(bodyBytes, object))
+
+	req.Header.Set(hKey, hValue)
+
+	command, _ := http2curl.GetCurlCommand(req)
+	log.Entry.WithField("tags", "request").Debug(command)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return handleResponseForSimpleJSON(resp, out, s.handler)
 }
 
 // Post ...
@@ -87,13 +112,52 @@ func (s *SimpleJSON) Post(tail string, in, out interface{}) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return errors.Errorf("http status %d != 200", resp.StatusCode)
-	}
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	return handleResponseForSimpleJSON(resp, out, s.handler)
+}
+
+func (s *SimpleJSON) PostShortConn(tail string, in, out interface{}) error {
+	marshal, err := json.Marshal(in)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return errors.WithStack(json.Unmarshal(bodyBytes, out))
+
+	req, err := http.NewRequest("POST", s.url+tail, bytes.NewReader(marshal))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Close = true
+
+	command, _ := http2curl.GetCurlCommand(req)
+	log.Entry.WithField("tags", "request").Debug(command)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return handleResponseForSimpleJSON(resp, out, s.handler)
+}
+
+func handleResponseForSimpleJSON(resp *http.Response, out interface{}, handler resultHandler) error {
+	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if resp.StatusCode != 200 {
+		bodyStr := string(bodyBytes)
+		if len(bodyBytes) > 500 {
+			bodyStr = string(bodyBytes[:150])
+			bodyStr = strings.ToValidUTF8(bodyStr, "") + "   凸(゜皿゜メ)"
+		}
+		return errors.Errorf("http status %d != 200\n%s", resp.StatusCode, bodyStr)
+	}
+	return handler(bodyBytes, out)
+}
+
+// DefaultHandler default way to unmarshal
+func DefaultSimpleJSONHandler(body []byte, out interface{}) error {
+	err := json.Unmarshal(body, out)
+	return errors.WithStack(err)
 }

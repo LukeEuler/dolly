@@ -8,8 +8,7 @@ import (
 	"time"
 )
 
-// DefaultTs ...
-var DefaultTs = &http.Transport{
+var DefaultTS = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
 	DialContext: (&net.Dialer{
 		Timeout:   30 * time.Second,
@@ -25,18 +24,24 @@ var DefaultTs = &http.Transport{
 // BatchElem ...
 type BatchElem struct {
 	Method string
-	Args   []interface{}
+	Args   interface{}
 	Result interface{}
 	Error  error
 }
 
-type jsonRPCMessage struct {
+type jsonRPCSendMessage struct {
 	Version string          `json:"jsonrpc"`
 	ID      uint64          `json:"id,omitempty"`
 	Method  string          `json:"method,omitempty"`
 	Params  json.RawMessage `json:"params,omitempty"`
+}
+
+type jsonRPCReceiveMessage struct {
+	Version string          `json:"jsonrpc"`
+	ID      json.Number     `json:"id,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *jsonError      `json:"error,omitempty"`
+	id      uint64
 }
 
 type jsonError struct {

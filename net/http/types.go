@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-// DefaultTs ...
-var DefaultTs = &http.Transport{
+var DefaultTS = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
 	DialContext: (&net.Dialer{
 		Timeout:   30 * time.Second,

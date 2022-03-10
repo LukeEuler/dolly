@@ -3,9 +3,9 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,7 +22,7 @@ type ResultJSON struct {
 
 // NewResultJSON ...
 func NewResultJSON(url string) *ResultJSON {
-	ts := DefaultTs
+	ts := DefaultTS
 	return &ResultJSON{
 		client: &http.Client{
 			Timeout:   5 * time.Second,
@@ -68,7 +68,7 @@ func (r *ResultJSON) Get(tail string, object interface{}) error {
 
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	return handleResponse(resp, object)
 }
@@ -77,7 +77,7 @@ func (r *ResultJSON) Get(tail string, object interface{}) error {
 func (r *ResultJSON) Post(tail string, in, out interface{}) error {
 	marshal, err := json.Marshal(in)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	req, err := http.NewRequest("POST", r.url+tail, bytes.NewReader(marshal))
@@ -91,19 +91,24 @@ func (r *ResultJSON) Post(tail string, in, out interface{}) error {
 
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	return handleResponse(resp, out)
 }
 
 func handleResponse(resp *http.Response, out interface{}) error {
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("http status %d != 200", resp.StatusCode)
-	}
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
+	}
+	if resp.StatusCode != 200 {
+		bodyStr := string(bodyBytes)
+		if len(bodyBytes) > 500 {
+			bodyStr = string(bodyBytes[:150])
+			bodyStr = strings.ToValidUTF8(bodyStr, "") + "   凸(゜皿゜メ)"
+		}
+		return errors.Errorf("http status %d != 200\n%s", resp.StatusCode, bodyStr)
 	}
 	return unmarshalBody(bodyBytes, out)
 }
@@ -113,17 +118,17 @@ func unmarshalBody(body []byte, object interface{}) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(content, object)
+	return errors.WithStack(json.Unmarshal(content, object))
 }
 
 func unmarshalResult(raw []byte) (content []byte, err error) {
 	resMsg := new(result)
 	err = json.Unmarshal(raw, resMsg)
-	if err != nil {
+	if err = errors.WithStack(err); err != nil {
 		return
 	}
 	if resMsg.hasError() {
-		err = resMsg.GetError()
+		err = errors.WithStack(resMsg.GetError())
 		return
 	}
 	content = resMsg.Result
