@@ -11,10 +11,10 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
+
+	"github.com/LukeEuler/dolly/log"
 )
 
-// SQLDialect ..
 const SQLDialect = "mysql"
 
 // OpenGorm 初始化gorm，开启日志，并在create/query时自动处理BigIn类型，注意更新BigInt字段时仍需使用gorm.Expr
@@ -54,22 +54,22 @@ func WithTransaction(db *gorm.DB, f func(db *gorm.DB) error) error {
 	dbTx := db.Begin()
 	if dbTx.Error != nil {
 		err := errors.Wrap(dbTx.Error, "failed to open tx")
-		logrus.Error(err)
+		log.Entry.Error(err)
 		return err
 	}
 	if err := f(dbTx); err != nil {
 		rollBackErr := dbTx.Rollback().Error
 		if rollBackErr != nil {
-			logrus.Error(rollBackErr)
+			log.Entry.Error(rollBackErr)
 		}
 		return err
 	}
 	if err := dbTx.Commit().Error; err != nil {
 		err = errors.Wrap(err, "failed to commit tx")
-		logrus.Error(err)
+		log.Entry.Error(err)
 		rollBackErr := dbTx.Rollback().Error
 		if rollBackErr != nil {
-			logrus.Error(rollBackErr)
+			log.Entry.Error(rollBackErr)
 		}
 		return err
 	}
@@ -153,9 +153,12 @@ func Adapt(values ...interface{}) {
 				}
 			}
 
-			logrus.WithField("cost", timeUsed).WithField("rowsAffected", strconv.FormatInt(values[5].(int64), 10)).Debug(sql)
+			log.Entry.
+				WithField("cost", timeUsed).
+				WithField("rowsAffected", strconv.FormatInt(values[5].(int64), 10)).
+				Debug(sql)
 		} else {
-			logrus.Info(values...)
+			log.Entry.Info(values...)
 		}
 	}
 }

@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"moul.io/http2curl"
+
+	"github.com/LukeEuler/dolly/log"
 )
 
 // ResultJSON ...
@@ -63,7 +64,7 @@ func (r *ResultJSON) Get(tail string, object interface{}) error {
 	}
 
 	command, _ := http2curl.GetCurlCommand(req)
-	logrus.WithField("tags", "request").Debug(command)
+	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := r.client.Do(req)
 	if err != nil {
@@ -86,7 +87,7 @@ func (r *ResultJSON) Post(tail string, in, out interface{}) error {
 	req.Header.Set("Content-Type", "application/json")
 
 	command, _ := http2curl.GetCurlCommand(req)
-	logrus.WithField("tags", "request").Debug(command)
+	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := r.client.Do(req)
 	if err != nil {

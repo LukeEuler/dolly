@@ -8,13 +8,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Err print stack trace if possible
-func Err(err error) {
-	ErrWithFields(err, nil)
+// Error print stack trace if possible
+func Error(err error) {
+	ErrorWithFields(err, nil)
 }
 
-// ErrWithFields print stack trace if possible
-func ErrWithFields(err error, inFields logrus.Fields) {
+// ErrorWithFields print stack trace if possible
+func ErrorWithFields(err error, inFields logrus.Fields) {
 	fields := getFieldsCopy(inFields)
 	if err == nil {
 		Entry.WithFields(fields).Errorf("nil error!!!\n%s", debug.Stack())
@@ -71,9 +71,9 @@ func ErrWithFields(err error, inFields logrus.Fields) {
 	Entry.WithFields(fields).Errorf("%#v", err)
 }
 
-// Fatal = Err + exit(1)
+// Fatal = Error + exit(1)
 func Fatal(err error) {
-	Err(err)
+	Error(err)
 	Entry.Logger.Exit(1)
 }
 

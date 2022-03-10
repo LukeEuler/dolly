@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"moul.io/http2curl"
+
+	"github.com/LukeEuler/dolly/log"
 )
 
 // Version ...
@@ -197,7 +198,7 @@ func (c *Client) syncRequest(msg *jsonRPCMessage) (buf []byte, err error) {
 	req.ContentLength = int64(len(body))
 
 	command, _ := http2curl.GetCurlCommand(req)
-	logrus.WithField("tags", "request").Debug(command)
+	log.Entry.WithField("tags", "request").Debug(command)
 
 	res, err := c.Client.Do(req)
 	if err != nil {
@@ -297,7 +298,7 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCMessage) ([]byte, error) {
 	req.ContentLength = int64(len(body))
 
 	command, _ := http2curl.GetCurlCommand(req)
-	logrus.WithField("tags", "request").Debug(command)
+	log.Entry.WithField("tags", "request").Debug(command)
 
 	res, err := c.Client.Do(req)
 	if err != nil {

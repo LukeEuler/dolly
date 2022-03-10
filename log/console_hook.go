@@ -8,7 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// AddConsoleOut ...
 func AddConsoleOut(level int) {
 	DisableDefaultConsole()
 	Entry.Logger.AddHook(newConsoleHook(level))
@@ -19,7 +18,6 @@ type consoleHook struct {
 	levels    []logrus.Level
 }
 
-// Fire event
 func (c *consoleHook) Fire(entry *logrus.Entry) error {
 	formatBytes, err := c.formatter.Format(entry)
 	if err != nil {

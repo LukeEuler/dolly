@@ -13,9 +13,9 @@ import (
 )
 
 // AddFileOut only support unix os
-func AddFileOut(logFilePath string, level, days int) (err error) {
-	var absPath string
-	if absPath, err = filepath.Abs(logFilePath); err != nil {
+func AddFileOut(logFilePath string, level, days int) error {
+	absPath, err := filepath.Abs(logFilePath)
+	if err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -27,12 +27,11 @@ func AddFileOut(logFilePath string, level, days int) (err error) {
 			}
 		}
 	}
-	if err = errors.WithStack(err); err != nil {
-		return
+	if err != nil {
+		return errors.WithStack(err)
 	}
 	if err = unix.Access(logDirPath, unix.W_OK); err != nil {
-		err = errors.Wrapf(err, "%s is not writable", logDirPath)
-		return
+		return errors.Wrapf(err, "%s is not writable", logDirPath)
 	}
 
 	var logf *rotatelogs.RotateLogs
@@ -55,7 +54,7 @@ func AddFileOut(logFilePath string, level, days int) (err error) {
 	}
 
 	Entry.Logger.AddHook(hook)
-	return
+	return nil
 }
 
 type fileHook struct {
