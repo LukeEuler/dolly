@@ -27,7 +27,7 @@ func AddKafkaHook(topic string, brokers []string, level int) error {
 		return err
 	}
 
-	logrus.AddHook(hook)
+	Entry.Logger.AddHook(hook)
 	return nil
 }
 
