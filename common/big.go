@@ -11,40 +11,34 @@ type BigInt struct {
 	*big.Int
 }
 
-// NewBigInt ..
 func NewBigInt(x int64) BigInt {
 	return BigInt{
 		big.NewInt(x),
 	}
 }
 
-// WrapMathBig ...
 func WrapMathBig(x *big.Int) BigInt {
 	return BigInt{
 		x,
 	}
 }
 
-// Add ...
 func (b *BigInt) Add(bi BigInt) BigInt {
 	v := new(big.Int).Set(b.Int)
 	v = v.Add(v, bi.Origin())
 	return WrapMathBig(v)
 }
 
-// Neg ...
 func (b *BigInt) Neg() BigInt {
 	v := new(big.Int).Set(b.Int)
 	v = v.Neg(v)
 	return WrapMathBig(v)
 }
 
-// Origin ..
 func (b *BigInt) Origin() *big.Int {
 	return b.Int
 }
 
-// Value ..
 func (b *BigInt) Value() (driver.Value, error) {
 	if b != nil {
 		return (b).String(), nil
@@ -52,7 +46,6 @@ func (b *BigInt) Value() (driver.Value, error) {
 	return nil, nil
 }
 
-// String ..
 func (b *BigInt) String() string {
 	if b.Int == nil {
 		return "0"
@@ -64,13 +57,13 @@ func (b *BigInt) String() string {
 //
 // The src value will be of one of the following types:
 //
-//    int64
-//    float64
-//    bool
-//    []byte
-//    string
-//    time.Time
-//    nil - for NULL values
+//	int64
+//	float64
+//	bool
+//	[]byte
+//	string
+//	time.Time
+//	nil - for NULL values
 //
 // An error should be returned if the value cannot be stored
 // without loss of information.
