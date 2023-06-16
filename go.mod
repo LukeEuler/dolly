@@ -5,11 +5,12 @@ go 1.19
 require (
 	github.com/Shopify/sarama v1.31.1
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
-	github.com/jinzhu/gorm v1.9.16
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/sys v0.0.0-20220207234003-57398862261d
+	gorm.io/driver/mysql v1.5.1
+	gorm.io/gorm v1.25.1
 	moul.io/http2curl v1.0.0
 )
 
@@ -18,6 +19,7 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
@@ -26,6 +28,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.2 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/klauspost/compress v1.14.2 // indirect
 	github.com/lestrrat-go/strftime v1.0.5 // indirect
