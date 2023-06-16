@@ -14,13 +14,11 @@ import (
 	"github.com/LukeEuler/dolly/log"
 )
 
-// ResultJSON ...
 type ResultJSON struct {
 	client *http.Client
 	url    string
 }
 
-// NewResultJSON ...
 func NewResultJSON(url string) *ResultJSON {
 	ts := DefaultTS
 	return &ResultJSON{
@@ -45,18 +43,15 @@ func (r *result) GetError() error {
 	return errors.New(r.Error)
 }
 
-// SetTimeout ste http timeout
 func (r *ResultJSON) SetTimeout(timeout time.Duration) *ResultJSON {
 	r.client.Timeout = timeout
 	return r
 }
 
-// SetTransport set the Transport
 func (r ResultJSON) SetTransport(ts http.RoundTripper) {
 	r.client.Transport = ts
 }
 
-// Get ...
 func (r *ResultJSON) Get(tail string, object interface{}) error {
 	req, err := http.NewRequest("GET", r.url+tail, nil)
 	if err != nil {
@@ -73,7 +68,6 @@ func (r *ResultJSON) Get(tail string, object interface{}) error {
 	return handleResponse(resp, object)
 }
 
-// Post ...
 func (r *ResultJSON) Post(tail string, in, out interface{}) error {
 	marshal, err := json.Marshal(in)
 	if err != nil {

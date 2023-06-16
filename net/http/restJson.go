@@ -31,18 +31,15 @@ func NewRestJSON(url string) *RestJSON {
 	}
 }
 
-// SetTimeout ste http timeout
 func (s *RestJSON) SetTimeout(timeout time.Duration) *RestJSON {
 	s.client.Timeout = timeout
 	return s
 }
 
-// SetTransport set the Transport
 func (s *RestJSON) SetTransport(ts http.RoundTripper) {
 	s.client.Transport = ts
 }
 
-// ShowRequest ...
 func (s *RestJSON) ShowRequest(value bool) *RestJSON {
 	s.showRequest = value
 	return s

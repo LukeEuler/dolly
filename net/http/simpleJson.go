@@ -16,7 +16,6 @@ import (
 
 type resultHandler func(body []byte, destination interface{}) error
 
-// SimpleJSON ...
 type SimpleJSON struct {
 	client *http.Client
 	url    string
@@ -24,7 +23,6 @@ type SimpleJSON struct {
 	handler resultHandler // 用以更灵活的支持各式返回结果,目前仅不支持批量请求，需要时请自行修改BatchSyncCall并充分测试
 }
 
-// NewSimpleJSON ...
 func NewSimpleJSON(url string) *SimpleJSON {
 	ts := DefaultTS
 	return &SimpleJSON{
@@ -41,13 +39,11 @@ func (s *SimpleJSON) GetURL() string {
 	return s.url
 }
 
-// SetTimeout ste http timeout
 func (s *SimpleJSON) SetTimeout(timeout time.Duration) *SimpleJSON {
 	s.client.Timeout = timeout
 	return s
 }
 
-// SetTransport set the Transport
 func (s *SimpleJSON) SetTransport(ts http.RoundTripper) {
 	s.client.Transport = ts
 }
@@ -57,7 +53,6 @@ func (s *SimpleJSON) SetResultHandler(handler resultHandler) *SimpleJSON {
 	return s
 }
 
-// Get ...
 func (s *SimpleJSON) Get(tail string, out interface{}) error {
 	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {
@@ -92,7 +87,6 @@ func (s *SimpleJSON) GetWithHeader(hKey, hValue, tail string, out interface{}) e
 	return handleResponseForSimpleJSON(resp, out, s.handler)
 }
 
-// Post ...
 func (s *SimpleJSON) Post(tail string, in, out interface{}) error {
 	marshal, err := json.Marshal(in)
 	if err != nil {
@@ -100,6 +94,23 @@ func (s *SimpleJSON) Post(tail string, in, out interface{}) error {
 	}
 
 	req, err := http.NewRequest("POST", s.url+tail, bytes.NewReader(marshal))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	command, _ := http2curl.GetCurlCommand(req)
+	log.Entry.WithField("tags", "request").Debug(command)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return handleResponseForSimpleJSON(resp, out, s.handler)
+}
+
+func (s *SimpleJSON) PostString(tail, in string, out interface{}) error {
+	req, err := http.NewRequest("POST", s.url+tail, strings.NewReader(in))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -156,7 +167,6 @@ func handleResponseForSimpleJSON(resp *http.Response, out interface{}, handler r
 	return handler(bodyBytes, out)
 }
 
-// DefaultHandler default way to unmarshal
 func DefaultSimpleJSONHandler(body []byte, out interface{}) error {
 	err := json.Unmarshal(body, out)
 	return errors.WithStack(err)

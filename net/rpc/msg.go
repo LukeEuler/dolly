@@ -21,7 +21,6 @@ var DefaultTS = &http.Transport{
 	ExpectContinueTimeout: 1 * time.Second,
 }
 
-// BatchElem ...
 type BatchElem struct {
 	Method string
 	Args   interface{}

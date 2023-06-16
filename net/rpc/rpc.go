@@ -21,7 +21,6 @@ import (
 
 type Version string
 
-// json rpc version
 const (
 	JSONRPCVersion1 Version = "1.0"
 	JSONRPCVersion2 Version = "2.0"
@@ -40,7 +39,6 @@ type Client struct {
 	ResultHandler  func(result []byte, destination interface{}) error // 用以更灵活的支持各式返回结果,目前仅不支持批量请求，需要时请自行修改BatchSyncCall并充分测试
 }
 
-// Dial ...
 func Dial(url string, user string, pass string, certs []byte, version Version) (*Client, error) {
 	c, err := DialWithoutAuth(url, certs, version)
 	if err != nil {
@@ -52,11 +50,10 @@ func Dial(url string, user string, pass string, certs []byte, version Version) (
 	return c, nil
 }
 
-// DialWithoutAuth ...
 func DialWithoutAuth(url string, certs []byte, version Version) (*Client, error) {
 	req, err := http.NewRequest("POST", url, nil)
-	if err = errors.WithStack(err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -90,18 +87,15 @@ func DialWithoutAuth(url string, certs []byte, version Version) (*Client, error)
 	return &c, nil
 }
 
-// SetTransport set the Transport
 func (c *Client) SetTransport(ts http.RoundTripper) {
 	c.Client.Transport = ts
 }
 
-// SetTimeout set http timeout
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
 	c.Client.Timeout = timeout
 	return c
 }
 
-// SetMaxBatchNum set max batch num
 func (c *Client) SetMaxBatchNum(maxBatchNum int) *Client {
 	if maxBatchNum > 0 {
 		c.enableMaxBatch = true
@@ -110,7 +104,6 @@ func (c *Client) SetMaxBatchNum(maxBatchNum int) *Client {
 	return c
 }
 
-// SetResultHandler ..
 func (c *Client) SetResultHandler(handler func([]byte, interface{}) error) {
 	c.ResultHandler = handler
 }
@@ -118,8 +111,8 @@ func (c *Client) SetResultHandler(handler func([]byte, interface{}) error) {
 // DialInsecureSkipVerify make client ignore server's certificate chain and host name
 func DialInsecureSkipVerify(url string, user string, pass string, version Version) (*Client, error) {
 	req, err := http.NewRequest("POST", url, nil)
-	if err = errors.WithStack(err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	req.SetBasicAuth(user, pass)
 	req.Header.Set("Content-Type", "application/json")
@@ -160,10 +153,9 @@ func DefaultHandler(res []byte, target interface{}) error {
 		return errors.WithStack(resMsg.Error)
 	}
 	err = json.Unmarshal(resMsg.Result, &target)
-	return errors.Wrapf(err, "unmarshaling josn rpc result: %s", string(res))
+	return errors.Wrapf(err, "unmarshaling json rpc result: %s", string(res))
 }
 
-// SyncCallObject ...
 func (c *Client) SyncCallObject(res interface{}, method string, params interface{}) error {
 	if params == nil {
 		params = new(emptyStruct)
@@ -179,15 +171,14 @@ func (c *Client) SyncCallObject(res interface{}, method string, params interface
 	return c.ResultHandler(buf, res)
 }
 
-// SyncCall ...
 func (c *Client) SyncCall(res interface{}, method string, params ...interface{}) error {
 	return c.SyncCallObject(res, method, params)
 }
 
 func (c *Client) syncRequest(msg *jsonRPCSendMessage) (buf []byte, err error) {
 	body, err := json.Marshal(msg)
-	if err = errors.WithStack(err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	req := c.Req.WithContext(context.Background())
 	req.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -197,8 +188,8 @@ func (c *Client) syncRequest(msg *jsonRPCSendMessage) (buf []byte, err error) {
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	res, err := c.Client.Do(req)
-	if err = errors.WithStack(err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	defer res.Body.Close()
 	buf, err = io.ReadAll(res.Body)
@@ -230,6 +221,7 @@ func (c *Client) BatchSyncCall(batch []BatchElem) (err error) {
 	var buf []byte
 	responseList := make([]*jsonRPCReceiveMessage, 0, totalLength)
 	if !c.enableMaxBatch || c.maxBatchNum <= 0 || batchNum <= c.maxBatchNum {
+		log.Entry.Debugf("try batch [%d]", batchNum)
 		buf, err = c.batchSyncRequest(requestList)
 		if err != nil {
 			return
@@ -245,7 +237,7 @@ func (c *Client) BatchSyncCall(batch []BatchElem) (err error) {
 				j = batchNum
 			}
 
-			log.Entry.Debugf("try batch [%d,%d], total %d", i, j, batchNum)
+			log.Entry.Debugf("try batch [%d,%d), total %d", i, j, batchNum)
 			buf, err = c.batchSyncRequest(requestList[i:j])
 			if err != nil {
 				return
@@ -307,8 +299,8 @@ func handleBatchResult(batch []BatchElem, requestList []*jsonRPCSendMessage, res
 
 func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err error) {
 	body, err := json.Marshal(msg)
-	if err = errors.WithStack(err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	req := c.Req.WithContext(context.Background())
 	req.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -320,8 +312,8 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err er
 	}
 
 	res, err := c.Client.Do(req)
-	if err = errors.WithStack(err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	defer res.Body.Close()
 	buf, err = io.ReadAll(res.Body)
@@ -338,8 +330,8 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err er
 
 func (c *Client) newMessage(method string, param interface{}) (*jsonRPCSendMessage, error) {
 	params, err := json.Marshal(param)
-	if err = errors.WithStack(err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	return &jsonRPCSendMessage{Version: string(c.version), ID: c.nextID(), Method: method, Params: params}, nil
 }
