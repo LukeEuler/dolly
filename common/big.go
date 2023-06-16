@@ -1,12 +1,15 @@
 package common
 
 import (
+	"context"
 	"database/sql/driver"
 	"fmt"
 	"math/big"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
-// BigInt 包装big.Int以实现sql.Scanner接口，可直接接收数据库中的Decimal
 type BigInt struct {
 	*big.Int
 }
@@ -23,6 +26,10 @@ func WrapMathBig(x *big.Int) BigInt {
 	}
 }
 
+func (b *BigInt) Origin() *big.Int {
+	return b.Int
+}
+
 func (b *BigInt) Add(bi BigInt) BigInt {
 	v := new(big.Int).Set(b.Int)
 	v = v.Add(v, bi.Origin())
@@ -35,8 +42,11 @@ func (b *BigInt) Neg() BigInt {
 	return WrapMathBig(v)
 }
 
-func (b *BigInt) Origin() *big.Int {
-	return b.Int
+func (b *BigInt) String() string {
+	if b.Int == nil {
+		return "0"
+	}
+	return b.Int.String()
 }
 
 func (b *BigInt) Value() (driver.Value, error) {
@@ -44,13 +54,6 @@ func (b *BigInt) Value() (driver.Value, error) {
 		return (b).String(), nil
 	}
 	return nil, nil
-}
-
-func (b *BigInt) String() string {
-	if b.Int == nil {
-		return "0"
-	}
-	return b.Int.String()
 }
 
 // Scan assigns a value from a database driver.
@@ -87,4 +90,11 @@ func (b *BigInt) Scan(value interface{}) error {
 		return fmt.Errorf("could not scan type %T into BigInt ", t)
 	}
 	return nil
+}
+
+func (b BigInt) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
+	return clause.Expr{
+		SQL:  "cast(? AS DECIMAL(65,0))",
+		Vars: []interface{}{b.String()},
+	}
 }
