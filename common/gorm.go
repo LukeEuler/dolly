@@ -17,8 +17,6 @@ import (
 	"github.com/LukeEuler/dolly/log"
 )
 
-const SQLDialect = "mysql"
-
 // OpenGorm 初始化gorm，开启日志，并在create/query时自动处理BigIn类型，注意更新BigInt字段时仍需使用gorm.Expr
 func OpenGorm(connectStr string) (*gorm.DB, error) {
 	db, err := gorm.Open(mysql.Open(connectStr), &gorm.Config{
