@@ -23,8 +23,8 @@ var DefaultTS = &http.Transport{
 
 type BatchElem struct {
 	Method string
-	Args   interface{}
-	Result interface{}
+	Args   any
+	Result any
 	Error  error
 }
 
@@ -44,9 +44,9 @@ type jsonRPCReceiveMessage struct {
 }
 
 type jsonError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
 func (err *jsonError) Error() string {

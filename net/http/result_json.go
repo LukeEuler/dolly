@@ -52,7 +52,7 @@ func (r ResultJSON) SetTransport(ts http.RoundTripper) {
 	r.client.Transport = ts
 }
 
-func (r *ResultJSON) Get(tail string, object interface{}) error {
+func (r *ResultJSON) Get(tail string, object any) error {
 	req, err := http.NewRequest("GET", r.url+tail, nil)
 	if err != nil {
 		return errors.WithStack(err)
@@ -68,7 +68,7 @@ func (r *ResultJSON) Get(tail string, object interface{}) error {
 	return handleResponse(resp, object)
 }
 
-func (r *ResultJSON) Post(tail string, in, out interface{}) error {
+func (r *ResultJSON) Post(tail string, in, out any) error {
 	marshal, err := json.Marshal(in)
 	if err != nil {
 		return errors.WithStack(err)
@@ -90,7 +90,7 @@ func (r *ResultJSON) Post(tail string, in, out interface{}) error {
 	return handleResponse(resp, out)
 }
 
-func handleResponse(resp *http.Response, out interface{}) error {
+func handleResponse(resp *http.Response, out any) error {
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -107,7 +107,7 @@ func handleResponse(resp *http.Response, out interface{}) error {
 	return unmarshalBody(bodyBytes, out)
 }
 
-func unmarshalBody(body []byte, object interface{}) error {
+func unmarshalBody(body []byte, object any) error {
 	content, err := unmarshalResult(body)
 	if err != nil {
 		return err

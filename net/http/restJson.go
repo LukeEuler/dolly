@@ -50,7 +50,7 @@ type RestJSONParam struct {
 	Value string
 }
 
-func (s *RestJSON) Get(tail string, params []RestJSONParam, object interface{}) error {
+func (s *RestJSON) Get(tail string, params []RestJSONParam, object any) error {
 	//new request
 	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {

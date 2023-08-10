@@ -36,7 +36,7 @@ type Client struct {
 	Pass           string
 	enableMaxBatch bool
 	maxBatchNum    int
-	ResultHandler  func(result []byte, destination interface{}) error // 用以更灵活的支持各式返回结果,目前仅不支持批量请求，需要时请自行修改BatchSyncCall并充分测试
+	ResultHandler  func(result []byte, destination any) error // 用以更灵活的支持各式返回结果,目前仅不支持批量请求，需要时请自行修改BatchSyncCall并充分测试
 }
 
 func Dial(url string, user string, pass string, certs []byte, version Version) (*Client, error) {
@@ -104,7 +104,7 @@ func (c *Client) SetMaxBatchNum(maxBatchNum int) *Client {
 	return c
 }
 
-func (c *Client) SetResultHandler(handler func([]byte, interface{}) error) {
+func (c *Client) SetResultHandler(handler func([]byte, any) error) {
 	c.ResultHandler = handler
 }
 
@@ -143,7 +143,7 @@ func DialInsecureSkipVerify(url string, user string, pass string, version Versio
 }
 
 // DefaultHandler default way to unmarshal
-func DefaultHandler(res []byte, target interface{}) error {
+func DefaultHandler(res []byte, target any) error {
 	resMsg := jsonRPCReceiveMessage{}
 	err := json.Unmarshal(res, &resMsg)
 	if err != nil {
@@ -156,7 +156,7 @@ func DefaultHandler(res []byte, target interface{}) error {
 	return errors.Wrapf(err, "unmarshaling json rpc result: %s", string(res))
 }
 
-func (c *Client) SyncCallObject(res interface{}, method string, params interface{}) error {
+func (c *Client) SyncCallObject(res any, method string, params any) error {
 	if params == nil {
 		params = new(emptyStruct)
 	}
@@ -171,7 +171,7 @@ func (c *Client) SyncCallObject(res interface{}, method string, params interface
 	return c.ResultHandler(buf, res)
 }
 
-func (c *Client) SyncCall(res interface{}, method string, params ...interface{}) error {
+func (c *Client) SyncCall(res any, method string, params ...any) error {
 	return c.SyncCallObject(res, method, params)
 }
 
@@ -328,7 +328,7 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err er
 	return
 }
 
-func (c *Client) newMessage(method string, param interface{}) (*jsonRPCSendMessage, error) {
+func (c *Client) newMessage(method string, param any) (*jsonRPCSendMessage, error) {
 	params, err := json.Marshal(param)
 	if err != nil {
 		return nil, errors.WithStack(err)

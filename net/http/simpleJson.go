@@ -14,7 +14,7 @@ import (
 	"github.com/LukeEuler/dolly/log"
 )
 
-type resultHandler func(body []byte, destination interface{}) error
+type resultHandler func(body []byte, destination any) error
 
 type SimpleJSON struct {
 	client *http.Client
@@ -53,7 +53,7 @@ func (s *SimpleJSON) SetResultHandler(handler resultHandler) *SimpleJSON {
 	return s
 }
 
-func (s *SimpleJSON) Get(tail string, out interface{}) error {
+func (s *SimpleJSON) Get(tail string, out any) error {
 	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {
 		return errors.WithStack(err)
@@ -69,7 +69,7 @@ func (s *SimpleJSON) Get(tail string, out interface{}) error {
 	return handleResponseForSimpleJSON(resp, out, s.handler)
 }
 
-func (s *SimpleJSON) GetWithHeader(hKey, hValue, tail string, out interface{}) error {
+func (s *SimpleJSON) GetWithHeader(hKey, hValue, tail string, out any) error {
 	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {
 		return errors.WithStack(err)
@@ -87,7 +87,7 @@ func (s *SimpleJSON) GetWithHeader(hKey, hValue, tail string, out interface{}) e
 	return handleResponseForSimpleJSON(resp, out, s.handler)
 }
 
-func (s *SimpleJSON) Post(tail string, in, out interface{}) error {
+func (s *SimpleJSON) Post(tail string, in, out any) error {
 	marshal, err := json.Marshal(in)
 	if err != nil {
 		return errors.WithStack(err)
@@ -109,7 +109,7 @@ func (s *SimpleJSON) Post(tail string, in, out interface{}) error {
 	return handleResponseForSimpleJSON(resp, out, s.handler)
 }
 
-func (s *SimpleJSON) PostString(tail, in string, out interface{}) error {
+func (s *SimpleJSON) PostString(tail, in string, out any) error {
 	req, err := http.NewRequest("POST", s.url+tail, strings.NewReader(in))
 	if err != nil {
 		return errors.WithStack(err)
@@ -126,7 +126,7 @@ func (s *SimpleJSON) PostString(tail, in string, out interface{}) error {
 	return handleResponseForSimpleJSON(resp, out, s.handler)
 }
 
-func (s *SimpleJSON) PostShortConn(tail string, in, out interface{}) error {
+func (s *SimpleJSON) PostShortConn(tail string, in, out any) error {
 	marshal, err := json.Marshal(in)
 	if err != nil {
 		return errors.WithStack(err)
@@ -150,7 +150,7 @@ func (s *SimpleJSON) PostShortConn(tail string, in, out interface{}) error {
 	return handleResponseForSimpleJSON(resp, out, s.handler)
 }
 
-func handleResponseForSimpleJSON(resp *http.Response, out interface{}, handler resultHandler) error {
+func handleResponseForSimpleJSON(resp *http.Response, out any, handler resultHandler) error {
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -167,7 +167,7 @@ func handleResponseForSimpleJSON(resp *http.Response, out interface{}, handler r
 	return handler(bodyBytes, out)
 }
 
-func DefaultSimpleJSONHandler(body []byte, out interface{}) error {
+func DefaultSimpleJSONHandler(body []byte, out any) error {
 	err := json.Unmarshal(body, out)
 	return errors.WithStack(err)
 }

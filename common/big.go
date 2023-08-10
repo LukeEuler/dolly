@@ -74,7 +74,7 @@ func (b *BigInt) Value() (driver.Value, error) {
 // Reference types such as []byte are only valid until the next call to Scan
 // and should not be retained. Their underlying memory is owned by the driver.
 // If retention is necessary, copy their values before the next call to Scan.
-func (b *BigInt) Scan(value interface{}) error {
+func (b *BigInt) Scan(value any) error {
 	b.Int = new(big.Int)
 	if value == nil {
 		return nil
@@ -95,6 +95,6 @@ func (b *BigInt) Scan(value interface{}) error {
 func (b BigInt) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
 	return clause.Expr{
 		SQL:  "cast(? AS DECIMAL(65,0))",
-		Vars: []interface{}{b.String()},
+		Vars: []any{b.String()},
 	}
 }

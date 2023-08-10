@@ -93,7 +93,7 @@ func WithTransaction(db *gorm.DB, f func(db *gorm.DB) error) error {
 }
 
 // HandleDBTX 封装对事务的处理
-func HandleDBTX(db *gorm.DB, f func(*gorm.DB, ...interface{}) error, args ...interface{}) (err error) {
+func HandleDBTX(db *gorm.DB, f func(*gorm.DB, ...any) error, args ...any) (err error) {
 	defer TimeConsume(time.Now())
 	dbTx := db.Begin()
 	defer RecoverV2(dbTx, &err)
@@ -141,22 +141,22 @@ func (l *GormLogger) LogMode(logger.LogLevel) logger.Interface {
 	return l
 }
 
-func (l *GormLogger) Info(ctx context.Context, msg string, data ...interface{}) {
+func (l *GormLogger) Info(ctx context.Context, msg string, data ...any) {
 	log.Entry.
 		WithField("gorm", "others").
-		Infof(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+		Infof(msg, append([]any{utils.FileWithLineNum()}, data...)...)
 }
 
-func (l *GormLogger) Warn(ctx context.Context, msg string, data ...interface{}) {
+func (l *GormLogger) Warn(ctx context.Context, msg string, data ...any) {
 	log.Entry.
 		WithField("gorm", "others").
-		Warnf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+		Warnf(msg, append([]any{utils.FileWithLineNum()}, data...)...)
 }
 
-func (l *GormLogger) Error(ctx context.Context, msg string, data ...interface{}) {
+func (l *GormLogger) Error(ctx context.Context, msg string, data ...any) {
 	log.Entry.
 		WithField("gorm", "others").
-		Errorf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+		Errorf(msg, append([]any{utils.FileWithLineNum()}, data...)...)
 }
 
 func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
