@@ -3,14 +3,14 @@ module github.com/LukeEuler/dolly
 go 1.20
 
 require (
-	github.com/IBM/sarama v1.41.1
+	github.com/IBM/sarama v1.41.3
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/sys v0.11.0
-	gorm.io/driver/mysql v1.5.1
-	gorm.io/gorm v1.25.1
+	golang.org/x/sys v0.13.0
+	gorm.io/driver/mysql v1.5.2
+	gorm.io/gorm v1.25.5
 	moul.io/http2curl v1.0.0
 )
 
@@ -37,6 +37,6 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/smartystreets/goconvey v1.7.2 // indirect
-	golang.org/x/crypto v0.12.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 )
