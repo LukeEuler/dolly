@@ -29,10 +29,10 @@ type BatchElem struct {
 }
 
 type jsonRPCSendMessage struct {
-	Version string          `json:"jsonrpc"`
-	ID      uint64          `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
+	Version string `json:"jsonrpc"`
+	ID      uint64 `json:"id,omitempty"`
+	Method  string `json:"method,omitempty"`
+	Params  any    `json:"params,omitempty"`
 }
 
 type jsonRPCReceiveMessage struct {

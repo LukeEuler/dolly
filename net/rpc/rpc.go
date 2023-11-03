@@ -156,23 +156,13 @@ func DefaultHandler(res []byte, target any) error {
 	return errors.Wrapf(err, "unmarshaling json rpc result: %s", string(res))
 }
 
-func (c *Client) SyncCallObject(res any, method string, params any) error {
-	if params == nil {
-		params = new(emptyStruct)
-	}
-	msg, err := c.newMessage(method, params)
-	if err != nil {
-		return err
-	}
+func (c *Client) SyncCall(res any, method string, params ...any) error {
+	msg := c.newMessage(method, params...)
 	buf, err := c.syncRequest(msg)
 	if err != nil {
 		return err
 	}
 	return c.ResultHandler(buf, res)
-}
-
-func (c *Client) SyncCall(res any, method string, params ...any) error {
-	return c.SyncCallObject(res, method, params)
 }
 
 func (c *Client) syncRequest(msg *jsonRPCSendMessage) (buf []byte, err error) {
@@ -212,7 +202,7 @@ func (c *Client) BatchSyncCall(batch []BatchElem) (err error) {
 	}
 	requestList := make([]*jsonRPCSendMessage, totalLength)
 	for i := range requestList {
-		requestList[i], err = c.newMessage(batch[i].Method, batch[i].Args)
+		requestList[i] = c.newMessage(batch[i].Method, batch[i].Args)
 		if err != nil {
 			return
 		}
@@ -328,12 +318,14 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err er
 	return
 }
 
-func (c *Client) newMessage(method string, param any) (*jsonRPCSendMessage, error) {
-	params, err := json.Marshal(param)
-	if err != nil {
-		return nil, errors.WithStack(err)
+func (c *Client) newMessage(method string, param ...any) *jsonRPCSendMessage {
+	params := Params(param...)
+	return &jsonRPCSendMessage{
+		Version: string(c.version),
+		ID:      c.nextID(),
+		Method:  method,
+		Params:  params,
 	}
-	return &jsonRPCSendMessage{Version: string(c.version), ID: c.nextID(), Method: method, Params: params}, nil
 }
 
 func (c *Client) nextID() uint64 {
