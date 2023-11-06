@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"moul.io/http2curl"
 
+	"github.com/LukeEuler/dolly/common"
 	"github.com/LukeEuler/dolly/log"
 )
 
@@ -59,7 +59,7 @@ func (s *SimpleJSON) Get(tail string, out any) error {
 		return errors.WithStack(err)
 	}
 
-	command, _ := http2curl.GetCurlCommand(req)
+	command, _ := common.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := s.client.Do(req)
@@ -77,7 +77,7 @@ func (s *SimpleJSON) GetWithHeader(hKey, hValue, tail string, out any) error {
 
 	req.Header.Set(hKey, hValue)
 
-	command, _ := http2curl.GetCurlCommand(req)
+	command, _ := common.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := s.client.Do(req)
@@ -99,7 +99,7 @@ func (s *SimpleJSON) Post(tail string, in, out any) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	command, _ := http2curl.GetCurlCommand(req)
+	command, _ := common.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := s.client.Do(req)
@@ -116,7 +116,7 @@ func (s *SimpleJSON) PostString(tail, in string, out any) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	command, _ := http2curl.GetCurlCommand(req)
+	command, _ := common.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := s.client.Do(req)
@@ -139,7 +139,7 @@ func (s *SimpleJSON) PostShortConn(tail string, in, out any) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 
-	command, _ := http2curl.GetCurlCommand(req)
+	command, _ := common.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := s.client.Do(req)

@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"moul.io/http2curl"
 
+	"github.com/LukeEuler/dolly/common"
 	"github.com/LukeEuler/dolly/log"
 )
 
@@ -174,7 +174,7 @@ func (c *Client) syncRequest(msg *jsonRPCSendMessage) (buf []byte, err error) {
 	req.Body = io.NopCloser(bytes.NewBuffer(body))
 	req.ContentLength = int64(len(body))
 
-	command, _ := http2curl.GetCurlCommand(req)
+	command, _ := common.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	res, err := c.Client.Do(req)
@@ -297,7 +297,7 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err er
 	req.ContentLength = int64(len(body))
 
 	if len(msg) <= 5 {
-		command, _ := http2curl.GetCurlCommand(req)
+		command, _ := common.GetCurlCommand(req)
 		log.Entry.WithField("tags", "request").Debug(command)
 	}
 

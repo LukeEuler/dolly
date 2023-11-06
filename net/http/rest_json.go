@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"moul.io/http2curl"
 
+	"github.com/LukeEuler/dolly/common"
 	"github.com/LukeEuler/dolly/log"
 )
 
@@ -68,7 +68,7 @@ func (s *RestJSON) Get(tail string, params []RestJSONParam, object any) error {
 		fmt.Println(s.url + tail + "?" + req.URL.RawQuery)
 	}
 
-	command, _ := http2curl.GetCurlCommand(req)
+	command, _ := common.GetCurlCommand(req)
 	log.Entry.WithField("tags", "request").Debug(command)
 
 	resp, err := s.client.Do(req)
