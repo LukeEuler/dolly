@@ -93,26 +93,30 @@ func WithTransaction(db *gorm.DB, f func(db *gorm.DB) error) error {
 }
 
 // HandleDBTX 封装对事务的处理
-func HandleDBTX(db *gorm.DB, f func(*gorm.DB, ...any) error, args ...any) (err error) {
+func HandleDBTX(db *gorm.DB, f func(*gorm.DB, Context) error, ctx Context) error {
 	defer TimeConsume(time.Now())
 	dbTx := db.Begin()
+	var err error
 	defer RecoverV2(dbTx, &err)
 
-	if err = dbTx.Error; err != nil {
+	err = dbTx.Error
+	if err != nil {
 		log.Entry.Error(errors.Wrap(err, "new procedure"))
-		return
+		return err
 	}
 
-	if err = f(dbTx, args...); err != nil {
+	err = f(dbTx, ctx)
+	if err != nil {
 		SilentlyRollback(dbTx)
-		return
+		return err
 	}
 
-	if err = dbTx.Commit().Error; err != nil {
+	err = dbTx.Commit().Error
+	if err != nil {
 		log.Entry.Error(errors.Wrap(err, "roll back procedure"))
 		SilentlyRollback(dbTx)
 	}
-	return
+	return err
 }
 
 // SilentlyRollback 回滚 dbTx，并打印回滚错误
