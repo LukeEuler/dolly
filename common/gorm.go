@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -117,6 +118,12 @@ func HandleDBTX(db *gorm.DB, f func(*gorm.DB, Context) error, ctx Context) error
 		SilentlyRollback(dbTx)
 	}
 	return err
+}
+
+func HandleDBTXWithLock(db *gorm.DB, mutex *sync.RWMutex, f func(*gorm.DB, Context) error, ctx Context) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	return HandleDBTX(db, f, ctx)
 }
 
 // SilentlyRollback 回滚 dbTx，并打印回滚错误

@@ -1,6 +1,8 @@
 package common
 
 import (
+	"math/big"
+	"reflect"
 	"testing"
 )
 
@@ -64,6 +66,34 @@ func TestCut(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("Cut() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStringToBigInt(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    *big.Int
+		wantErr bool
+	}{
+		{
+			"test 1",
+			"123",
+			big.NewInt(123),
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := StringToBigInt(tt.content)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("StringToBigInt() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("StringToBigInt() = %v, want %v", got, tt.want)
 			}
 		})
 	}

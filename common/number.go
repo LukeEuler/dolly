@@ -1,10 +1,12 @@
 package common
 
 import (
+	"math/big"
 	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 )
 
 var (
@@ -55,4 +57,15 @@ func Cut(raw string, decimalPoints, tailPoints uint) (string, error) {
 		return head, nil
 	}
 	return head + "." + tail, nil
+}
+
+func StringToBigInt(content string) (*big.Int, error) {
+	value, err := decimal.NewFromString(content)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if value.Exponent() != 0 {
+		return nil, errors.Errorf("can not covert %s to big.Int", content)
+	}
+	return value.BigInt(), nil
 }
