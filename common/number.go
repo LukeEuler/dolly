@@ -3,6 +3,7 @@ package common
 import (
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -68,4 +69,26 @@ func StringToBigInt(content string) (*big.Int, error) {
 		return nil, errors.Errorf("can not covert %s to big.Int", content)
 	}
 	return value.BigInt(), nil
+}
+
+func HexStringToBigInt(content string) (*big.Int, error) {
+	content = strings.ToLower(content)
+	ok, _ := regexp.MatchString(`^(0x)?([0-9]|[a-f])+$`, content)
+	if !ok {
+		return nil, errInvalidNum(content)
+	}
+	content = strings.TrimPrefix(content, "0x")
+	b, ok := new(big.Int).SetString(content, 16)
+	if !ok {
+		return nil, errInvalidNum(content)
+	}
+	return b, nil
+}
+
+func StringToUint64(val string) (uint64, error) {
+	value, err := strconv.ParseUint(val, 0, 64)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	return value, nil
 }

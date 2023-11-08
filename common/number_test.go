@@ -98,3 +98,37 @@ func TestStringToBigInt(t *testing.T) {
 		})
 	}
 }
+
+func TestHexStringToBigInt(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		value   string
+		wantErr bool
+	}{
+		{
+			"test 1",
+			"1a",
+			"26",
+			false,
+		},
+		{
+			"test 1",
+			"0000000000000000000000000000000000000000000001032c50d3b4c90a0000",
+			"4780900000000000000000",
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotB, err := HexStringToBigInt(tt.content)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HexStringToBigInt() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotB.String(), tt.value) {
+				t.Errorf("HexStringToBigInt() = %v, want %v", gotB, tt.value)
+			}
+		})
+	}
+}

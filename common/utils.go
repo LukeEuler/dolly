@@ -69,3 +69,31 @@ func FuncName(f any) string {
 func FormatHexString(content string) string {
 	return strings.TrimPrefix(strings.ToLower(content), "0x")
 }
+
+// CheckList 检查是否包含元素
+type CheckList []string
+
+func (l *CheckList) Contains(value string) bool {
+	for _, item := range *l {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *CheckList) AddNoChange(al *CheckList) *CheckList {
+	ret := new(CheckList)
+	*ret = append(*l, *al...)
+	return ret
+}
+
+func (l *CheckList) DeleteNoChange(elem string) *CheckList {
+	tmp := new(CheckList)
+	for _, v := range *l {
+		if v != elem {
+			*tmp = append(*tmp, v)
+		}
+	}
+	return tmp
+}
