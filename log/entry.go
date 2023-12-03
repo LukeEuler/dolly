@@ -29,6 +29,10 @@ func init() {
 	}
 }
 
+func ReportCaller(a bool) {
+	Entry.Logger.SetReportCaller(a)
+}
+
 func AddField(key, value string) {
 	if len(key) == 0 {
 		return
