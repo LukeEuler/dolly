@@ -19,9 +19,9 @@ import (
 )
 
 // OpenGorm 初始化gorm，开启日志，并在create/query时自动处理BigIn类型，注意更新BigInt字段时仍需使用gorm.Expr
-func OpenGorm(connectStr string) (*gorm.DB, error) {
+func OpenGorm(connectStr string, fileds logrus.Fields) (*gorm.DB, error) {
 	db, err := gorm.Open(mysql.Open(connectStr), &gorm.Config{
-		Logger: NewGormLogger(),
+		Logger: NewGormLogger(fileds),
 	})
 	if err != nil {
 		return db, errors.Wrapf(err, "connect db %s", hideUserPass(connectStr))
@@ -139,12 +139,14 @@ func SilentlyRollback(dbTx *gorm.DB) {
 type GormLogger struct {
 	IgnoreRecordNotFoundError bool
 	SlowThreshold             time.Duration
+	fileds                    logrus.Fields
 }
 
-func NewGormLogger() logger.Interface {
+func NewGormLogger(fileds logrus.Fields) logger.Interface {
 	return &GormLogger{
 		IgnoreRecordNotFoundError: true,
 		SlowThreshold:             200 * time.Millisecond,
+		fileds:                    fileds,
 	}
 }
 
@@ -155,18 +157,21 @@ func (l *GormLogger) LogMode(logger.LogLevel) logger.Interface {
 func (l *GormLogger) Info(ctx context.Context, msg string, data ...any) {
 	log.Entry.
 		WithField("gorm", "others").
+		WithFields(l.fileds).
 		Infof(msg, append([]any{utils.FileWithLineNum()}, data...)...)
 }
 
 func (l *GormLogger) Warn(ctx context.Context, msg string, data ...any) {
 	log.Entry.
 		WithField("gorm", "others").
+		WithFields(l.fileds).
 		Warnf(msg, append([]any{utils.FileWithLineNum()}, data...)...)
 }
 
 func (l *GormLogger) Error(ctx context.Context, msg string, data ...any) {
 	log.Entry.
 		WithField("gorm", "others").
+		WithFields(l.fileds).
 		Errorf(msg, append([]any{utils.FileWithLineNum()}, data...)...)
 }
 
@@ -184,7 +189,8 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 		"cost":   fmt.Sprintf("%.3fms", float64(elapsed.Nanoseconds())/1e6),
 		"sql":    sql,
 		"rows":   rawsStr,
-	})
+	}).
+		WithFields(l.fileds)
 	switch {
 	case err != nil && (!errors.Is(err, gorm.ErrRecordNotFound) || !l.IgnoreRecordNotFoundError):
 		entry.Error(err)
