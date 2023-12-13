@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LukeEuler/dolly/common/tree"
 	"github.com/LukeEuler/dolly/log"
 )
 
@@ -45,8 +46,8 @@ type ITentacle interface {
 }
 
 func NewWorkerFactory(
-	nextClient func() (any, error),
-	f func(any, int) (any, error)) Factory {
+	nextClient func() (tree.Context, error),
+	f func(tree.Context, int) (any, error)) Factory {
 	funcName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 	list := strings.Split(funcName, "/")
 	if len(list) > 0 {
@@ -54,7 +55,7 @@ func NewWorkerFactory(
 	}
 
 	return func() (Worker, error) {
-		client, err := nextClient()
+		ctx, err := nextClient()
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +63,7 @@ func NewWorkerFactory(
 			for {
 				height := <-inputs
 				log.Entry.WithField("tentacle", funcName).Infof("try get %d", height)
-				res, err := f(client, height)
+				res, err := f(ctx, height)
 				log.Entry.WithField("tentacle", funcName).Infof("%d done", height)
 				if err != nil {
 					// 防止程序在错误上，过多的浪费资源。主要是错误日志会爆
