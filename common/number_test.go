@@ -132,3 +132,75 @@ func TestHexStringToBigInt(t *testing.T) {
 		})
 	}
 }
+
+func TestFloatStringToBigInt(t *testing.T) {
+	tests := []struct {
+		name          string
+		content       string
+		decimalPoints uint
+		want          *big.Int
+		wantErr       bool
+	}{
+		{
+			"test 1",
+			"123.456",
+			4,
+			big.NewInt(1234560),
+			false,
+		},
+		{
+			"test 2",
+			"123.456",
+			2,
+			big.NewInt(12345),
+			false,
+		},
+		{
+			"test 3",
+			"123456",
+			2,
+			big.NewInt(12345600),
+			false,
+		},
+		{
+			"test 4",
+			"123.456",
+			0,
+			big.NewInt(123),
+			false,
+		},
+		{
+			"test 5",
+			"-123.456",
+			2,
+			big.NewInt(-12345),
+			false,
+		},
+		{
+			"test 6",
+			"+123.456",
+			2,
+			nil,
+			true,
+		},
+		{
+			"test 7",
+			"1.",
+			2,
+			nil,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := FloatStringToBigInt(tt.content, tt.decimalPoints)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FloatStringToBigInt() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FloatStringToBigInt() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

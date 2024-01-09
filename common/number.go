@@ -60,6 +60,40 @@ func Cut(raw string, decimalPoints, tailPoints uint) (string, error) {
 	return head + "." + tail, nil
 }
 
+/*
+FloatStringToBigInt 浮点数转化为整数
+decimalPoints： 浮点数转化为整数时，缩放的精度
+
+example:
+(123.456, 2) -> 12345
+*/
+func FloatStringToBigInt(content string, decimalPoints uint) (*big.Int, error) {
+	if ok, _ := regexp.MatchString(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`, content); !ok {
+		return nil, errInvalidNum(content)
+	}
+	head := content
+	tail := ""
+	if strings.Contains(content, ".") {
+		splitList := strings.Split(content, ".")
+		if len(splitList) != 2 {
+			return nil, errInvalidNum(content)
+		}
+		head, tail = splitList[0], splitList[1]
+	}
+	if len(tail) > int(decimalPoints) {
+		tail = tail[:int(decimalPoints)]
+	}
+	for i := len(tail); i < int(decimalPoints); i++ {
+		tail += "0"
+	}
+	result, ok := new(big.Int).SetString(head+tail, 10)
+	if !ok {
+		return nil, errInvalidNum(content)
+	}
+
+	return result, nil
+}
+
 func StringToBigInt(content string) (*big.Int, error) {
 	value, err := decimal.NewFromString(content)
 	if err != nil {
