@@ -61,7 +61,11 @@ func NewWorkerFactory(
 		}
 		return func(inputs chan int, outputs chan *Box) {
 			for {
-				height := <-inputs
+				height, ok := <-inputs
+				if !ok {
+					// inputs 被关闭了, worker 就需要停下
+					break
+				}
 				log.Entry.WithField("tentacle", funcName).Infof("try get %d", height)
 				res, err := f(ctx, height)
 				log.Entry.WithField("tentacle", funcName).Infof("%d done", height)
