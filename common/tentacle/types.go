@@ -67,8 +67,11 @@ func NewWorkerFactory(
 					break
 				}
 				log.Entry.WithField("tentacle", funcName).Infof("try get %d", height)
+				start := time.Now()
 				res, err := f(ctx, height)
-				log.Entry.WithField("tentacle", funcName).Infof("%d done", height)
+				log.Entry.WithField("tentacle", funcName).
+					WithField("cost", time.Since(start).String()).
+					Infof("%d done", height)
 				if err != nil {
 					// 防止程序在错误上，过多的浪费资源。主要是错误日志会爆
 					time.Sleep(time.Second)
