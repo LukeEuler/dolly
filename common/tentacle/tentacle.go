@@ -106,7 +106,7 @@ func (t *Tentacle) UpdateMaxSequence(sequence int) error {
 	if !t.cursor.workStarted {
 		return nil
 	}
-	maxValue := min(t.cursor.maxSequence, t.cursor.reservedAreaMax+t.workLength-1)
+	maxValue := min(t.cursor.maxSequence, t.cursor.reservedAreaMax+t.workLength)
 	// 运行过程中，如果更新了 max sequence, 则可能需要加入新的任务
 	for value := t.cursor.lastInputsSequence + 1; value <= maxValue; value++ {
 		t.inputs <- value
