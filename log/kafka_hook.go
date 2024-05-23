@@ -10,6 +10,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var kafkaVersion = sarama.DefaultVersion
+
+func SetKafkaVersion(version sarama.KafkaVersion) {
+	kafkaVersion = version
+}
+
 func AddKafkaHook(topic string, brokers []string, level int) error {
 	hook, err := newKafkaLogrusHook("group id not set yet!",
 		getHookLevel(level),
@@ -52,6 +58,7 @@ func newKafkaLogrusHook(id string,
 	kafkaConfig.Producer.Compression = sarama.CompressionSnappy        // Compress messages
 	kafkaConfig.Producer.Flush.Frequency = 500 * time.Millisecond      // Flush batches every 500ms
 	kafkaConfig.Producer.Partitioner = sarama.NewRoundRobinPartitioner // one partition at one time
+	kafkaConfig.Version = kafkaVersion
 
 	// check here if provided *tls.Config is not nil and assign to the sarama config
 	// NOTE: we automatically enabled the TLS config because sarama would error out if our
