@@ -20,6 +20,9 @@ type SimpleJSON struct {
 	client *http.Client
 	url    string
 
+	// request headers
+	headers map[string]string
+
 	handler resultHandler // 用以更灵活的支持各式返回结果,目前仅不支持批量请求，需要时请自行修改BatchSyncCall并充分测试
 }
 
@@ -44,6 +47,19 @@ func (s *SimpleJSON) SetTimeout(timeout time.Duration) *SimpleJSON {
 	return s
 }
 
+func (s *SimpleJSON) SetHeader(key, value string) *SimpleJSON {
+	if len(s.headers) == 0 {
+		s.headers = make(map[string]string)
+	}
+	s.headers[key] = value
+	return s
+}
+
+func (s *SimpleJSON) ClearHeaders() *SimpleJSON {
+	s.headers = nil
+	return s
+}
+
 func (s *SimpleJSON) SetTransport(ts http.RoundTripper) {
 	s.client.Transport = ts
 }
@@ -57,6 +73,12 @@ func (s *SimpleJSON) Get(tail string, out any) error {
 	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {
 		return errors.WithStack(err)
+	}
+
+	if len(s.headers) != 0 {
+		for k, v := range s.headers {
+			req.Header.Set(k, v)
+		}
 	}
 
 	command, _ := common.GetCurlCommand(req)
@@ -97,6 +119,12 @@ func (s *SimpleJSON) Post(tail string, in, out any) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	if len(s.headers) != 0 {
+		for k, v := range s.headers {
+			req.Header.Set(k, v)
+		}
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	command, _ := common.GetCurlCommand(req)
@@ -113,6 +141,11 @@ func (s *SimpleJSON) PostString(tail, in string, out any) error {
 	req, err := http.NewRequest("POST", s.url+tail, strings.NewReader(in))
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	if len(s.headers) != 0 {
+		for k, v := range s.headers {
+			req.Header.Set(k, v)
+		}
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -135,6 +168,11 @@ func (s *SimpleJSON) PostShortConn(tail string, in, out any) error {
 	req, err := http.NewRequest("POST", s.url+tail, bytes.NewReader(marshal))
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	if len(s.headers) != 0 {
+		for k, v := range s.headers {
+			req.Header.Set(k, v)
+		}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
