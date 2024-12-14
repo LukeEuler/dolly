@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCut(t *testing.T) {
@@ -203,4 +205,12 @@ func TestFloatStringToBigInt(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMaxNum(t *testing.T) {
+	a := MaxNum(int64(3), int64(-1))
+	assert.Equal(t, int64(3), a)
+
+	b := MaxNum(uint32(3), uint32(12))
+	assert.Equal(t, uint32(12), b)
 }

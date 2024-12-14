@@ -126,3 +126,10 @@ func StringToUint64(val string) (uint64, error) {
 	}
 	return value, nil
 }
+
+func MaxNum[T int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64](a, b T) T {
+	if a < b {
+		return b
+	}
+	return a
+}
