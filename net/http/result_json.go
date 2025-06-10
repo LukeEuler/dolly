@@ -91,6 +91,7 @@ func (r *ResultJSON) Post(tail string, in, out any) error {
 }
 
 func handleResponse(resp *http.Response, out any) error {
+	// nolint
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

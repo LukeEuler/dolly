@@ -25,6 +25,7 @@ func (c *CurlCommand) String() string {
 }
 
 func bashEscape(str string) string {
+	// nolint
 	return `'` + strings.Replace(str, `'`, `'\''`, -1) + `'`
 }
 

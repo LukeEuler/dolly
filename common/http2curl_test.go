@@ -163,7 +163,7 @@ func TestGetCurlCommand_serverSide(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		fmt.Fprint(w, c.String())
+		_, _ = fmt.Fprint(w, c.String())
 	}))
 	defer svr.Close()
 
@@ -171,6 +171,7 @@ func TestGetCurlCommand_serverSide(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	// nolint
 	defer resp.Body.Close()
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {

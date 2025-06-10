@@ -181,6 +181,7 @@ func (c *Client) syncRequest(msg *jsonRPCSendMessage) (buf []byte, err error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	// nolint
 	defer res.Body.Close()
 	buf, err = io.ReadAll(res.Body)
 	if res.StatusCode != 200 {
@@ -305,6 +306,7 @@ func (c *Client) batchSyncRequest(msg []*jsonRPCSendMessage) (buf []byte, err er
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	// nolint
 	defer res.Body.Close()
 	buf, err = io.ReadAll(res.Body)
 	if res.StatusCode != 200 {

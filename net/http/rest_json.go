@@ -75,6 +75,7 @@ func (s *RestJSON) Get(tail string, params []RestJSONParam, object any) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// nolint
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

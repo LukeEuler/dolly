@@ -94,6 +94,20 @@ func NewTentacle(concurrent, redundancy, reservedLength int, wf Factory) *Tentac
 	}
 }
 
+func (t *Tentacle) Stop() {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+	t.inputs = make(chan int, t.workLength)
+	t.outputs = make(chan *Box, t.workLength)
+	t.queue = make(chan *Box, t.workLength)
+	t.cacheArea = make(map[int]*Box, t.concurrent)
+	t.reservedArea = make(map[int]any, t.reservedLength+1)
+	t.cursor = cursor{
+		workStarted:       false,
+		reservedAreaEmpty: true,
+	}
+}
+
 // UpdateMaxSequence implement ITentacle
 func (t *Tentacle) UpdateMaxSequence(sequence int) error {
 	t.mutex.Lock()
@@ -156,7 +170,6 @@ func (t *Tentacle) copyCursor() cursor {
 	return t.cursor.copy()
 }
 
-// Get implement ITentacle
 func (t *Tentacle) Get(sequence int) (any, error) {
 	// 涉及读锁
 	cursorState := t.copyCursor()

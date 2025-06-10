@@ -40,7 +40,7 @@ func AddField(key, value string) {
 	if len(value) == 0 {
 		return
 	}
-	Entry.Entry = Entry.Entry.WithField(key, value)
+	Entry.Entry = Entry.WithField(key, value)
 }
 
 func callerPrettyfier(f *runtime.Frame) (string, string) {

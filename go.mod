@@ -1,8 +1,8 @@
 module github.com/LukeEuler/dolly
 
-go 1.21
+go 1.23
 
-toolchain go1.21.7
+toolchain go1.23.10
 
 require (
 	github.com/IBM/sarama v1.42.1

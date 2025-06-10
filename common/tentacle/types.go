@@ -43,6 +43,7 @@ ITentacle 是一个针对增量序列(非严格增量)顺序处理，的多协�
 type ITentacle interface {
 	UpdateMaxSequence(sequence int) error // 规定当前的最大处理序列
 	Get(sequence int) (any, error)        // 按序列获取数据
+	Stop()                                // 将 Tentacle 恢复到初始状态
 }
 
 func NewWorkerFactory(

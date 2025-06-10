@@ -103,3 +103,45 @@ func TestNewTentacle(t *testing.T) {
 	err = tentacle.UpdateMaxSequence(12)
 	assert.NoError(t, err)
 }
+
+func TestNewTentacleV2(t *testing.T) {
+	tentacle := NewTentacle(3, 2, 1, testNewFactory(testHandleSequenceV1))
+	err := tentacle.UpdateMaxSequence(5)
+	assert.NoError(t, err)
+
+	value, err := tentacle.Get(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 111, value)
+
+	value, err = tentacle.Get(2)
+	assert.NoError(t, err)
+	assert.Equal(t, 112, value)
+
+	value, err = tentacle.Get(3)
+	assert.NoError(t, err)
+	assert.Equal(t, 113, value)
+
+	value, err = tentacle.Get(4)
+	assert.NoError(t, err)
+	assert.Equal(t, 114, value)
+
+	_, err = tentacle.Get(2)
+	assert.Error(t, err)
+
+	tentacle.Stop()
+
+	err = tentacle.UpdateMaxSequence(4)
+	assert.NoError(t, err)
+
+	value, err = tentacle.Get(2)
+	assert.NoError(t, err)
+	assert.Equal(t, 112, value)
+
+	value, err = tentacle.Get(3)
+	assert.NoError(t, err)
+	assert.Equal(t, 113, value)
+
+	value, err = tentacle.Get(4)
+	assert.NoError(t, err)
+	assert.Equal(t, 114, value)
+}
