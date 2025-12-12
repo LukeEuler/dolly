@@ -29,6 +29,10 @@ func init() {
 	}
 }
 
+func SetStackMaxDepth(depth int) {
+	Entry.Depth = depth
+}
+
 func ReportCaller(a bool) {
 	Entry.Logger.SetReportCaller(a)
 }
@@ -112,7 +116,7 @@ func (e *PkgErrorEntry) WithError(err error) *logrus.Entry {
 		}
 		var stack string
 		for i, f := range st.StackTrace() {
-			if i >= depth {
+			if depth > 0 && i >= depth {
 				break
 			}
 			stack += fmt.Sprintf("\n%+v", f)
