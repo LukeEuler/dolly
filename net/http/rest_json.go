@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -15,9 +14,8 @@ import (
 )
 
 type RestJSON struct {
-	client      *http.Client
-	url         string
-	showRequest bool // for debug
+	client *http.Client
+	url    string
 }
 
 func NewRestJSON(url string) *RestJSON {
@@ -40,11 +38,6 @@ func (s *RestJSON) SetTransport(ts http.RoundTripper) {
 	s.client.Transport = ts
 }
 
-func (s *RestJSON) ShowRequest(value bool) *RestJSON {
-	s.showRequest = value
-	return s
-}
-
 type RestJSONParam struct {
 	Name  string
 	Value string
@@ -63,9 +56,6 @@ func (s *RestJSON) Get(tail string, params []RestJSONParam, object any) error {
 			q.Add(item.Name, item.Value)
 		}
 		req.URL.RawQuery = q.Encode()
-	}
-	if s.showRequest {
-		fmt.Println(s.url + tail + "?" + req.URL.RawQuery)
 	}
 
 	command, _ := common.GetCurlCommand(req)
