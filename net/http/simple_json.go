@@ -69,10 +69,17 @@ func (s *SimpleJSON) SetResultHandler(handler resultHandler) *SimpleJSON {
 	return s
 }
 
-func (s *SimpleJSON) Get(tail string, out any) error {
+func (s *SimpleJSON) Get(tail string, out any, params ...QueryParameter) error {
 	req, err := http.NewRequest("GET", s.url+tail, nil)
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	if len(params) > 0 {
+		q := req.URL.Query()
+		for _, item := range params {
+			q.Add(item.Key, item.Value)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
 
 	if len(s.headers) != 0 {

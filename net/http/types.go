@@ -18,3 +18,8 @@ var DefaultTS = &http.Transport{
 	TLSHandshakeTimeout:   10 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,
 }
+
+type QueryParameter struct {
+	Key   string
+	Value string
+}
