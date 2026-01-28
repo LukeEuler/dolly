@@ -14,11 +14,11 @@ import (
 type Factory func() (Worker, error)
 
 // Worker 用于处理具体业务对接口方法
-type Worker func(inputs chan int, outputs chan *Box)
+type Worker func(inputs chan int64, outputs chan *Box)
 
 // Box 是 Worker 处理后的数据结果
 type Box struct {
-	Sequence int
+	Sequence int64
 	Result   any
 	Err      error
 }
@@ -41,14 +41,14 @@ ITentacle 是一个针对增量序列(非严格增量)顺序处理，的多协�
 	更严格来说：如果某次处理的序列为 s 时，那么下次的处理序列，要么是 s，要么是 s+1
 */
 type ITentacle interface {
-	UpdateMaxSequence(sequence int) error // 规定当前的最大处理序列
-	Get(sequence int) (any, error)        // 按序列获取数据
-	Stop()                                // 将 Tentacle 恢复到初始状态
+	UpdateMaxSequence(sequence int64) error // 规定当前的最大处理序列
+	Get(sequence int64) (any, error)        // 按序列获取数据
+	Stop()                                  // 将 Tentacle 恢复到初始状态
 }
 
 func NewWorkerFactory(
 	nextClient func() (tree.Context, error),
-	f func(tree.Context, int) (any, error)) Factory {
+	f func(tree.Context, int64) (any, error)) Factory {
 	funcName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 	list := strings.Split(funcName, "/")
 	if len(list) > 0 {
@@ -60,7 +60,7 @@ func NewWorkerFactory(
 		if err != nil {
 			return nil, err
 		}
-		return func(inputs chan int, outputs chan *Box) {
+		return func(inputs chan int64, outputs chan *Box) {
 			for {
 				height, ok := <-inputs
 				if !ok {

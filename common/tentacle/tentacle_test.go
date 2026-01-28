@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testNewFactory(f func(int, int) (any, error)) Factory {
+func testNewFactory(f func(int64, int64) (any, error)) Factory {
 	// 函数变量，
-	salt := 110
+	salt := int64(110)
 	tenFailed := false
 	return func() (Worker, error) {
 		// xxxx
-		return func(inputs chan int, outputs chan *Box) {
+		return func(inputs chan int64, outputs chan *Box) {
 			for {
 				sequence := <-inputs
 				res, err := f(salt, sequence)
@@ -35,7 +35,7 @@ func testNewFactory(f func(int, int) (any, error)) Factory {
 	}
 }
 
-func testHandleSequenceV1(salt int, sequence int) (any, error) {
+func testHandleSequenceV1(salt, sequence int64) (any, error) {
 	return salt + sequence, nil
 }
 
@@ -46,14 +46,14 @@ func TestNewTentacle(t *testing.T) {
 
 	value, err := tentacle.Get(1)
 	assert.NoError(t, err)
-	assert.Equal(t, 111, value)
+	assert.Equal(t, int64(111), value)
 
 	_, err = tentacle.Get(6)
 	assert.Error(t, err)
 
 	value, err = tentacle.Get(1)
 	assert.NoError(t, err)
-	assert.Equal(t, 111, value)
+	assert.Equal(t, int64(111), value)
 
 	_, err = tentacle.Get(11)
 	assert.Error(t, err)
@@ -66,39 +66,39 @@ func TestNewTentacle(t *testing.T) {
 
 	value, err = tentacle.Get(2)
 	assert.NoError(t, err)
-	assert.Equal(t, 112, value)
+	assert.Equal(t, int64(112), value)
 
 	value, err = tentacle.Get(3)
 	assert.NoError(t, err)
-	assert.Equal(t, 113, value)
+	assert.Equal(t, int64(113), value)
 
 	value, err = tentacle.Get(4)
 	assert.NoError(t, err)
-	assert.Equal(t, 114, value)
+	assert.Equal(t, int64(114), value)
 
 	value, err = tentacle.Get(5)
 	assert.NoError(t, err)
-	assert.Equal(t, 115, value)
+	assert.Equal(t, int64(115), value)
 
 	value, err = tentacle.Get(6)
 	assert.NoError(t, err)
-	assert.Equal(t, 116, value)
+	assert.Equal(t, int64(116), value)
 
 	value, err = tentacle.Get(7)
 	assert.NoError(t, err)
-	assert.Equal(t, 117, value)
+	assert.Equal(t, int64(117), value)
 
 	value, err = tentacle.Get(8)
 	assert.NoError(t, err)
-	assert.Equal(t, 118, value)
+	assert.Equal(t, int64(118), value)
 
 	value, err = tentacle.Get(9)
 	assert.NoError(t, err)
-	assert.Equal(t, 119, value)
+	assert.Equal(t, int64(119), value)
 
 	value, err = tentacle.Get(10)
 	assert.NoError(t, err)
-	assert.Equal(t, 120, value)
+	assert.Equal(t, int64(120), value)
 
 	err = tentacle.UpdateMaxSequence(12)
 	assert.NoError(t, err)
@@ -111,19 +111,19 @@ func TestNewTentacleV2(t *testing.T) {
 
 	value, err := tentacle.Get(1)
 	assert.NoError(t, err)
-	assert.Equal(t, 111, value)
+	assert.Equal(t, int64(111), value)
 
 	value, err = tentacle.Get(2)
 	assert.NoError(t, err)
-	assert.Equal(t, 112, value)
+	assert.Equal(t, int64(112), value)
 
 	value, err = tentacle.Get(3)
 	assert.NoError(t, err)
-	assert.Equal(t, 113, value)
+	assert.Equal(t, int64(113), value)
 
 	value, err = tentacle.Get(4)
 	assert.NoError(t, err)
-	assert.Equal(t, 114, value)
+	assert.Equal(t, int64(114), value)
 
 	_, err = tentacle.Get(2)
 	assert.Error(t, err)
@@ -135,13 +135,13 @@ func TestNewTentacleV2(t *testing.T) {
 
 	value, err = tentacle.Get(2)
 	assert.NoError(t, err)
-	assert.Equal(t, 112, value)
+	assert.Equal(t, int64(112), value)
 
 	value, err = tentacle.Get(3)
 	assert.NoError(t, err)
-	assert.Equal(t, 113, value)
+	assert.Equal(t, int64(113), value)
 
 	value, err = tentacle.Get(4)
 	assert.NoError(t, err)
-	assert.Equal(t, 114, value)
+	assert.Equal(t, int64(114), value)
 }

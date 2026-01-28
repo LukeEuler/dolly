@@ -18,9 +18,9 @@ type Tentacle struct {
 	generate Factory
 
 	// 不变参数在此设置
-	concurrent     int // worker 同时运作数
-	workLength     int // 通用工作空间，inputs,outputs,queue 的大小
-	reservedLength int // 数据保留区长度
+	concurrent     int64 // worker 同时运作数
+	workLength     int64 // 通用工作空间，inputs,outputs,queue 的大小
+	reservedLength int64 // 数据保留区长度
 
 	/*
 		变化参数在此设置，变更时要使用合适的 mutex 锁
@@ -32,24 +32,24 @@ type Tentacle struct {
 		outputs 负责接收 worker 的结果
 		queue 负责接收 outputs 中已经完成排序的结果
 	*/
-	inputs  chan int
+	inputs  chan int64
 	outputs chan *Box
 	queue   chan *Box
 
 	// outputs -> cache -> queue， 释放 outputs 空间，且在 queue 无法接收的情况下做一个缓存区
-	cacheArea    map[int]*Box
-	reservedArea map[int]any // 数据保留区，可重复查询
+	cacheArea    map[int64]*Box
+	reservedArea map[int64]any // 数据保留区，可重复查询
 }
 
 type cursor struct {
 	workStarted        bool
-	maxSequence        int
-	lastInputsSequence int // 最后一个 input sequence
+	maxSequence        int64
+	lastInputsSequence int64 // 最后一个 input sequence
 
-	lastQueueSequence int // workStarted 时，记录为 sequence - 1
+	lastQueueSequence int64 // workStarted 时，记录为 sequence - 1
 	reservedAreaEmpty bool
-	reservedAreaMin   int
-	reservedAreaMax   int
+	reservedAreaMin   int64
+	reservedAreaMax   int64
 }
 
 func (c *cursor) copy() cursor {
@@ -65,7 +65,7 @@ func (c *cursor) copy() cursor {
 }
 
 // NewTentacle new Tentacle
-func NewTentacle(concurrent, redundancy, reservedLength int, wf Factory) *Tentacle {
+func NewTentacle(concurrent, redundancy, reservedLength int64, wf Factory) *Tentacle {
 	// concurrent>=1, redundancy>=2,reservedLength>=1
 	concurrent = max(concurrent, 1)
 	redundancy = max(redundancy, 2)
@@ -80,12 +80,12 @@ func NewTentacle(concurrent, redundancy, reservedLength int, wf Factory) *Tentac
 		generate:       wf,
 		workLength:     workLength,
 		reservedLength: reservedLength,
-		inputs:         make(chan int, workLength),
+		inputs:         make(chan int64, workLength),
 		outputs:        make(chan *Box, workLength),
 		queue:          make(chan *Box, workLength),
 
-		cacheArea:    make(map[int]*Box, concurrent),
-		reservedArea: make(map[int]any, reservedLength+1),
+		cacheArea:    make(map[int64]*Box, concurrent),
+		reservedArea: make(map[int64]any, reservedLength+1),
 
 		cursor: cursor{
 			workStarted:       false,
@@ -97,11 +97,11 @@ func NewTentacle(concurrent, redundancy, reservedLength int, wf Factory) *Tentac
 func (t *Tentacle) Stop() {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-	t.inputs = make(chan int, t.workLength)
+	t.inputs = make(chan int64, t.workLength)
 	t.outputs = make(chan *Box, t.workLength)
 	t.queue = make(chan *Box, t.workLength)
-	t.cacheArea = make(map[int]*Box, t.concurrent)
-	t.reservedArea = make(map[int]any, t.reservedLength+1)
+	t.cacheArea = make(map[int64]*Box, t.concurrent)
+	t.reservedArea = make(map[int64]any, t.reservedLength+1)
 	t.cursor = cursor{
 		workStarted:       false,
 		reservedAreaEmpty: true,
@@ -109,7 +109,7 @@ func (t *Tentacle) Stop() {
 }
 
 // UpdateMaxSequence implement ITentacle
-func (t *Tentacle) UpdateMaxSequence(sequence int) error {
+func (t *Tentacle) UpdateMaxSequence(sequence int64) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	if sequence < t.cursor.maxSequence {
@@ -129,7 +129,7 @@ func (t *Tentacle) UpdateMaxSequence(sequence int) error {
 	return nil
 }
 
-func (t *Tentacle) startWork(sequence int) error {
+func (t *Tentacle) startWork(sequence int64) error {
 	t.mutex.RLock()
 	startStatus := t.cursor.workStarted
 	t.mutex.RUnlock()
@@ -143,7 +143,7 @@ func (t *Tentacle) startWork(sequence int) error {
 	t.cursor.reservedAreaMax = sequence - 1
 	t.cursor.lastQueueSequence = sequence - 1
 
-	for i := 0; i < t.workLength; i++ {
+	for i := int64(0); i < t.workLength; i++ {
 		value := i + sequence
 		if value <= t.cursor.maxSequence {
 			t.inputs <- value
@@ -151,7 +151,7 @@ func (t *Tentacle) startWork(sequence int) error {
 		}
 	}
 
-	for i := 0; i < t.concurrent; i++ {
+	for i := int64(0); i < t.concurrent; i++ {
 		worker, err := t.generate()
 		if err != nil {
 			return err
@@ -170,7 +170,7 @@ func (t *Tentacle) copyCursor() cursor {
 	return t.cursor.copy()
 }
 
-func (t *Tentacle) Get(sequence int) (any, error) {
+func (t *Tentacle) Get(sequence int64) (any, error) {
 	// 涉及读锁
 	cursorState := t.copyCursor()
 
@@ -195,7 +195,7 @@ func (t *Tentacle) Get(sequence int) (any, error) {
 	return t.readFromReserved(sequence)
 }
 
-func (t *Tentacle) readFromReserved(sequence int) (any, error) {
+func (t *Tentacle) readFromReserved(sequence int64) (any, error) {
 	for {
 		// 涉及读锁
 		cursorState := t.copyCursor()
@@ -290,20 +290,4 @@ func (t *Tentacle) writeResult(item *Box) {
 		index++
 		t.cursor.lastQueueSequence = item.Sequence
 	}
-}
-
-// max(int,int) -> int
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-// min(int,int) -> int
-func min(a, b int) int {
-	if a > b {
-		return b
-	}
-	return a
 }
