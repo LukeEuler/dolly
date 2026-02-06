@@ -11,16 +11,16 @@ import (
 )
 
 // Factory 是 Worker 的构造器接口方法，同时也是为了方便隐藏业务的初始化变量
-type Factory func() (Worker, error)
+type Factory[T any] func() (Worker[T], error)
 
 // Worker 用于处理具体业务对接口方法
-type Worker func(inputs chan int64, outputs chan *box)
+type Worker[T any] func(inputs chan int64, outputs chan *box[T])
 
 // box 是 Worker 处理后的数据结果
-type box struct {
-	Sequence int64
-	Result   any
-	Err      error
+type box[T any] struct {
+	sequence int64
+	result   T
+	err      error
 }
 
 /*
@@ -40,27 +40,27 @@ ITentacle 是一个针对增量序列(非严格增量)顺序处理，的多协�
 	当外部调用处理了某序列 s 后，不会出现小于 s 的处理，（但可能会多次处理 s）
 	更严格来说：如果某次处理的序列为 s 时，那么下次的处理序列，要么是 s，要么是 s+1
 */
-type ITentacle interface {
+type ITentacle[T any] interface {
 	UpdateMaxSequence(sequence int64) error // 规定当前的最大处理序列
-	Get(sequence int64) (any, error)        // 按序列获取数据
+	Get(sequence int64) (T, error)          // 按序列获取数据
 	Stop()                                  // 将 Tentacle 恢复到初始状态
 }
 
-func NewWorkerFactory(
+func NewWorkerFactory[T any](
 	nextClient func() (tree.Context, error),
-	f func(tree.Context, int64) (any, error)) Factory {
+	f func(tree.Context, int64) (T, error)) Factory[T] {
 	funcName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 	list := strings.Split(funcName, "/")
 	if len(list) > 0 {
 		funcName = list[len(list)-1]
 	}
 
-	return func() (Worker, error) {
+	return func() (Worker[T], error) {
 		ctx, err := nextClient()
 		if err != nil {
 			return nil, err
 		}
-		return func(inputs chan int64, outputs chan *box) {
+		return func(inputs chan int64, outputs chan *box[T]) {
 			for {
 				height, ok := <-inputs
 				if !ok {
@@ -77,10 +77,10 @@ func NewWorkerFactory(
 					// 防止程序在错误上，过多的浪费资源。主要是错误日志会爆
 					time.Sleep(time.Second)
 				}
-				outputs <- &box{
-					Sequence: height,
-					Result:   res,
-					Err:      err,
+				outputs <- &box[T]{
+					sequence: height,
+					result:   res,
+					err:      err,
 				}
 			}
 		}, nil

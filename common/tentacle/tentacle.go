@@ -11,11 +11,11 @@ import (
 )
 
 // Tentacle implement ITentacle
-type Tentacle struct {
+type Tentacle[T any] struct {
 	mutex sync.RWMutex
 
 	// worker 工厂，将具体的业务逻辑从 tentacle 中剥离
-	generate Factory
+	generate Factory[T]
 
 	// 不变参数在此设置
 	concurrent     int64 // worker 同时运作数
@@ -33,12 +33,12 @@ type Tentacle struct {
 		queue 负责接收 outputs 中已经完成排序的结果
 	*/
 	inputs  chan int64
-	outputs chan *box
-	queue   chan *box
+	outputs chan *box[T]
+	queue   chan *box[T]
 
 	// outputs -> cache -> queue， 释放 outputs 空间，且在 queue 无法接收的情况下做一个缓存区
-	cacheArea    map[int64]*box
-	reservedArea map[int64]any // 数据保留区，可重复查询
+	cacheArea    map[int64]*box[T]
+	reservedArea map[int64]T // 数据保留区，可重复查询
 }
 
 type cursor struct {
@@ -65,7 +65,7 @@ func (c *cursor) copy() cursor {
 }
 
 // NewTentacle new Tentacle
-func NewTentacle(concurrent, redundancy, reservedLength int64, wf Factory) *Tentacle {
+func NewTentacle[T any](concurrent, redundancy, reservedLength int64, wf Factory[T]) *Tentacle[T] {
 	// concurrent>=1, redundancy>=2,reservedLength>=1
 	concurrent = max(concurrent, 1)
 	redundancy = max(redundancy, 2)
@@ -75,17 +75,17 @@ func NewTentacle(concurrent, redundancy, reservedLength int64, wf Factory) *Tent
 		cacheArea 的 length 选用 concurrent，暂不确定是否最优。直觉设置
 		reservedArea 的 length 选用 reservedLength+1 最佳
 	*/
-	return &Tentacle{
+	return &Tentacle[T]{
 		concurrent:     concurrent,
 		generate:       wf,
 		workLength:     workLength,
 		reservedLength: reservedLength,
 		inputs:         make(chan int64, workLength),
-		outputs:        make(chan *box, workLength),
-		queue:          make(chan *box, workLength),
+		outputs:        make(chan *box[T], workLength),
+		queue:          make(chan *box[T], workLength),
 
-		cacheArea:    make(map[int64]*box, concurrent),
-		reservedArea: make(map[int64]any, reservedLength+1),
+		cacheArea:    make(map[int64]*box[T], concurrent),
+		reservedArea: make(map[int64]T, reservedLength+1),
 
 		cursor: cursor{
 			workStarted:       false,
@@ -94,14 +94,14 @@ func NewTentacle(concurrent, redundancy, reservedLength int64, wf Factory) *Tent
 	}
 }
 
-func (t *Tentacle) Stop() {
+func (t *Tentacle[T]) Stop() {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 	t.inputs = make(chan int64, t.workLength)
-	t.outputs = make(chan *box, t.workLength)
-	t.queue = make(chan *box, t.workLength)
-	t.cacheArea = make(map[int64]*box, t.concurrent)
-	t.reservedArea = make(map[int64]any, t.reservedLength+1)
+	t.outputs = make(chan *box[T], t.workLength)
+	t.queue = make(chan *box[T], t.workLength)
+	t.cacheArea = make(map[int64]*box[T], t.concurrent)
+	t.reservedArea = make(map[int64]T, t.reservedLength+1)
 	t.cursor = cursor{
 		workStarted:       false,
 		reservedAreaEmpty: true,
@@ -109,7 +109,7 @@ func (t *Tentacle) Stop() {
 }
 
 // UpdateMaxSequence implement ITentacle
-func (t *Tentacle) UpdateMaxSequence(sequence int64) error {
+func (t *Tentacle[T]) UpdateMaxSequence(sequence int64) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	if sequence < t.cursor.maxSequence {
@@ -129,7 +129,7 @@ func (t *Tentacle) UpdateMaxSequence(sequence int64) error {
 	return nil
 }
 
-func (t *Tentacle) startWork(sequence int64) error {
+func (t *Tentacle[T]) startWork(sequence int64) error {
 	t.mutex.RLock()
 	startStatus := t.cursor.workStarted
 	t.mutex.RUnlock()
@@ -164,38 +164,39 @@ func (t *Tentacle) startWork(sequence int64) error {
 	return nil
 }
 
-func (t *Tentacle) copyCursor() cursor {
+func (t *Tentacle[T]) copyCursor() cursor {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 	return t.cursor.copy()
 }
 
-func (t *Tentacle) Get(sequence int64) (any, error) {
+func (t *Tentacle[T]) Get(sequence int64) (T, error) {
 	// 涉及读锁
 	cursorState := t.copyCursor()
 
+	var emp T
 	if sequence > cursorState.maxSequence {
-		return nil, errors.Errorf("get sequence(%d) > max sequence(%d)", sequence, cursorState.maxSequence)
+		return emp, errors.Errorf("get sequence(%d) > max sequence(%d)", sequence, cursorState.maxSequence)
 	}
 	if !cursorState.reservedAreaEmpty && sequence < cursorState.reservedAreaMin {
-		return nil, errors.Errorf("get sequence(%d) < min reserved(%d)", sequence, cursorState.reservedAreaMin)
+		return emp, errors.Errorf("get sequence(%d) < min reserved(%d)", sequence, cursorState.reservedAreaMin)
 	}
 	if !cursorState.reservedAreaEmpty && sequence > (cursorState.reservedAreaMin+t.reservedLength) {
-		return nil, errors.Errorf("get sequence(%d) > min reserved + length(%d+%d)",
+		return emp, errors.Errorf("get sequence(%d) > min reserved + length(%d+%d)",
 			sequence, cursorState.reservedAreaMin, t.reservedLength)
 	}
 
 	// 涉及写锁
 	err := t.startWork(sequence)
 	if err != nil {
-		return nil, err
+		return emp, err
 	}
 
 	// 涉及写锁
 	return t.readFromReserved(sequence)
 }
 
-func (t *Tentacle) readFromReserved(sequence int64) (any, error) {
+func (t *Tentacle[T]) readFromReserved(sequence int64) (T, error) {
 	for {
 		// 涉及读锁
 		cursorState := t.copyCursor()
@@ -203,7 +204,7 @@ func (t *Tentacle) readFromReserved(sequence int64) (any, error) {
 		if cursorState.reservedAreaMin <= sequence && sequence <= cursorState.reservedAreaMax {
 			res, ok := t.reservedArea[sequence]
 			if !ok {
-				return nil, errors.Errorf("something wrong: miss %d(reserved min %d, max %d)",
+				return res, errors.Errorf("something wrong: miss %d(reserved min %d, max %d)",
 					sequence, cursorState.reservedAreaMin, cursorState.reservedAreaMax)
 			}
 			return res, nil
@@ -213,9 +214,9 @@ func (t *Tentacle) readFromReserved(sequence int64) (any, error) {
 	}
 }
 
-func (t *Tentacle) readOneFromQueue() {
+func (t *Tentacle[T]) readOneFromQueue() {
 	newBox := <-t.queue
-	nextSequence := newBox.Sequence + t.workLength
+	nextSequence := newBox.sequence + t.workLength
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	if nextSequence <= t.cursor.maxSequence && nextSequence > t.cursor.lastInputsSequence {
@@ -231,25 +232,25 @@ func (t *Tentacle) readOneFromQueue() {
 		}
 	}
 
-	t.cursor.reservedAreaMax = newBox.Sequence
-	t.reservedArea[newBox.Sequence] = newBox.Result
+	t.cursor.reservedAreaMax = newBox.sequence
+	t.reservedArea[newBox.sequence] = newBox.result
 
 	if t.cursor.reservedAreaEmpty {
 		// assert newBoc.err == nil
 		// t.reservedLength >= 1
 		t.cursor.reservedAreaEmpty = false
-		t.cursor.reservedAreaMin = newBox.Sequence
+		t.cursor.reservedAreaMin = newBox.sequence
 		return
 	}
 	// !t.cursor.reservedAreaEmpty
 	// asset newBoc.sequence = t.cursor.reservedAreaMax + 1
-	if (newBox.Sequence - t.cursor.reservedAreaMin) == t.reservedLength {
+	if (newBox.sequence - t.cursor.reservedAreaMin) == t.reservedLength {
 		delete(t.reservedArea, t.cursor.reservedAreaMin)
 		t.cursor.reservedAreaMin++
 	}
 }
 
-func (t *Tentacle) writeResults() {
+func (t *Tentacle[T]) writeResults() {
 	go func() {
 		for item := range t.outputs {
 			t.writeResult(item)
@@ -257,28 +258,28 @@ func (t *Tentacle) writeResults() {
 	}()
 }
 
-func (t *Tentacle) writeResult(item *box) {
+func (t *Tentacle[T]) writeResult(item *box[T]) {
 	// 此时能够拿到数据，一定是 cursor.workStarted == true
 	// 且 cursor.lastQueueSequence = sequence - 1，初始化完成了
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	if item.Err != nil {
-		log.Entry.WithError(item.Err).Error(item.Err)
+	if item.err != nil {
+		log.Entry.WithError(item.err).Error(item.err)
 		// item.sequence <= t.cursor.maxSequence
-		t.inputs <- item.Sequence
+		t.inputs <- item.sequence
 		return
 	}
 
 	// item.sequence > cursor.lastQueueSequence
-	if item.Sequence > t.cursor.lastQueueSequence+1 {
+	if item.sequence > t.cursor.lastQueueSequence+1 {
 		// 尚未到放入 queue 的时机，先存下来
-		t.cacheArea[item.Sequence] = item
+		t.cacheArea[item.sequence] = item
 		return
 	}
 	// item.sequence == cursor.lastQueueSequence + 1
-	index := item.Sequence + 1
+	index := item.sequence + 1
 	t.queue <- item
-	t.cursor.lastQueueSequence = item.Sequence
+	t.cursor.lastQueueSequence = item.sequence
 	for {
 		// 尝试清理缓存
 		item, ok := t.cacheArea[index]
@@ -288,6 +289,6 @@ func (t *Tentacle) writeResult(item *box) {
 		t.queue <- item
 		delete(t.cacheArea, index)
 		index++
-		t.cursor.lastQueueSequence = item.Sequence
+		t.cursor.lastQueueSequence = item.sequence
 	}
 }

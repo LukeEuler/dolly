@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testNewFactory(f func(int64, int64) (any, error)) Factory {
+func testNewFactory(f func(int64, int64) (int64, error)) Factory[int64] {
 	// 函数变量，
 	salt := int64(110)
 	tenFailed := false
-	return func() (Worker, error) {
+	return func() (Worker[int64], error) {
 		// xxxx
-		return func(inputs chan int64, outputs chan *box) {
+		return func(inputs chan int64, outputs chan *box[int64]) {
 			for {
 				sequence := <-inputs
 				res, err := f(salt, sequence)
@@ -25,17 +25,17 @@ func testNewFactory(f func(int64, int64) (any, error)) Factory {
 				if sequence%3 == 0 {
 					time.Sleep(time.Millisecond * 3)
 				}
-				outputs <- &box{
-					Sequence: sequence,
-					Result:   res,
-					Err:      err,
+				outputs <- &box[int64]{
+					sequence: sequence,
+					result:   res,
+					err:      err,
 				}
 			}
 		}, nil
 	}
 }
 
-func testHandleSequenceV1(salt, sequence int64) (any, error) {
+func testHandleSequenceV1(salt, sequence int64) (int64, error) {
 	return salt + sequence, nil
 }
 
