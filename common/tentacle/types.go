@@ -14,10 +14,10 @@ import (
 type Factory func() (Worker, error)
 
 // Worker 用于处理具体业务对接口方法
-type Worker func(inputs chan int64, outputs chan *Box)
+type Worker func(inputs chan int64, outputs chan *box)
 
-// Box 是 Worker 处理后的数据结果
-type Box struct {
+// box 是 Worker 处理后的数据结果
+type box struct {
 	Sequence int64
 	Result   any
 	Err      error
@@ -60,7 +60,7 @@ func NewWorkerFactory(
 		if err != nil {
 			return nil, err
 		}
-		return func(inputs chan int64, outputs chan *Box) {
+		return func(inputs chan int64, outputs chan *box) {
 			for {
 				height, ok := <-inputs
 				if !ok {
@@ -77,7 +77,7 @@ func NewWorkerFactory(
 					// 防止程序在错误上，过多的浪费资源。主要是错误日志会爆
 					time.Sleep(time.Second)
 				}
-				outputs <- &Box{
+				outputs <- &box{
 					Sequence: height,
 					Result:   res,
 					Err:      err,

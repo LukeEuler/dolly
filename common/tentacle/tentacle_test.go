@@ -14,7 +14,7 @@ func testNewFactory(f func(int64, int64) (any, error)) Factory {
 	tenFailed := false
 	return func() (Worker, error) {
 		// xxxx
-		return func(inputs chan int64, outputs chan *Box) {
+		return func(inputs chan int64, outputs chan *box) {
 			for {
 				sequence := <-inputs
 				res, err := f(salt, sequence)
@@ -25,7 +25,7 @@ func testNewFactory(f func(int64, int64) (any, error)) Factory {
 				if sequence%3 == 0 {
 					time.Sleep(time.Millisecond * 3)
 				}
-				outputs <- &Box{
+				outputs <- &box{
 					Sequence: sequence,
 					Result:   res,
 					Err:      err,

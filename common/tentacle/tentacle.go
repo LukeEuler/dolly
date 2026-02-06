@@ -33,11 +33,11 @@ type Tentacle struct {
 		queue 负责接收 outputs 中已经完成排序的结果
 	*/
 	inputs  chan int64
-	outputs chan *Box
-	queue   chan *Box
+	outputs chan *box
+	queue   chan *box
 
 	// outputs -> cache -> queue， 释放 outputs 空间，且在 queue 无法接收的情况下做一个缓存区
-	cacheArea    map[int64]*Box
+	cacheArea    map[int64]*box
 	reservedArea map[int64]any // 数据保留区，可重复查询
 }
 
@@ -81,10 +81,10 @@ func NewTentacle(concurrent, redundancy, reservedLength int64, wf Factory) *Tent
 		workLength:     workLength,
 		reservedLength: reservedLength,
 		inputs:         make(chan int64, workLength),
-		outputs:        make(chan *Box, workLength),
-		queue:          make(chan *Box, workLength),
+		outputs:        make(chan *box, workLength),
+		queue:          make(chan *box, workLength),
 
-		cacheArea:    make(map[int64]*Box, concurrent),
+		cacheArea:    make(map[int64]*box, concurrent),
 		reservedArea: make(map[int64]any, reservedLength+1),
 
 		cursor: cursor{
@@ -98,9 +98,9 @@ func (t *Tentacle) Stop() {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 	t.inputs = make(chan int64, t.workLength)
-	t.outputs = make(chan *Box, t.workLength)
-	t.queue = make(chan *Box, t.workLength)
-	t.cacheArea = make(map[int64]*Box, t.concurrent)
+	t.outputs = make(chan *box, t.workLength)
+	t.queue = make(chan *box, t.workLength)
+	t.cacheArea = make(map[int64]*box, t.concurrent)
 	t.reservedArea = make(map[int64]any, t.reservedLength+1)
 	t.cursor = cursor{
 		workStarted:       false,
@@ -257,7 +257,7 @@ func (t *Tentacle) writeResults() {
 	}()
 }
 
-func (t *Tentacle) writeResult(item *Box) {
+func (t *Tentacle) writeResult(item *box) {
 	// 此时能够拿到数据，一定是 cursor.workStarted == true
 	// 且 cursor.lastQueueSequence = sequence - 1，初始化完成了
 	t.mutex.Lock()
