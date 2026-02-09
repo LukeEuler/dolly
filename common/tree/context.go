@@ -33,7 +33,7 @@ func (c *DefaultContext) Get(key string, res any) error {
 	}
 
 	dest := reflect.ValueOf(res)
-	if dest.Kind() == reflect.Ptr || dest.Kind() == reflect.Interface {
+	if dest.Kind() == reflect.Pointer || dest.Kind() == reflect.Interface {
 		dest = dest.Elem()
 	} else {
 		return errors.Errorf("invalid type for key(%s): %s",
