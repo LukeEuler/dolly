@@ -12,6 +12,12 @@ type Context interface {
 	Clear()
 }
 
+func Get[T any](ctx Context, key string) (*T, error) {
+	var res T
+	err := ctx.Get(key, &res)
+	return &res, err
+}
+
 type DefaultContext struct {
 	content map[string]any
 }
