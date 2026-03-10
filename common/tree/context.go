@@ -1,21 +1,35 @@
 package tree
 
 import (
-	"reflect"
-
 	"github.com/pkg/errors"
 )
 
 type Context interface {
 	Set(key string, value any)
-	Get(key string, res any) error
+	get(key string) (any, bool)
 	Clear()
 }
 
-func Get[T any](ctx Context, key string) (*T, error) {
-	var res T
-	err := ctx.Get(key, &res)
-	return &res, err
+/*
+当前golang泛型不支持不同类型的出现在struct上, 因此用独立函数做功能的补充
+
+	type Context interface {
+		Set(key string, value any)
+		Get[T any](key string) (T, error)
+		Clear()
+	}
+*/
+func Get[T any](ctx Context, key string) (T, error) {
+	var zero T
+	v, ok := ctx.get(key)
+	if !ok {
+		return zero, errors.Errorf("no key [%s]", key)
+	}
+	res, ok := v.(T)
+	if !ok {
+		return zero, errors.Errorf("type mismatch for key [%s]", key)
+	}
+	return res, nil
 }
 
 type DefaultContext struct {
@@ -26,29 +40,9 @@ func (c *DefaultContext) Set(key string, value any) {
 	c.content[key] = value
 }
 
-func (c *DefaultContext) Get(key string, res any) error {
+func (c *DefaultContext) get(key string) (any, bool) {
 	value, ok := c.content[key]
-	if !ok {
-		return errors.Errorf("no key [%s]", key)
-	}
-
-	dest := reflect.ValueOf(res)
-	if dest.Kind() == reflect.Pointer || dest.Kind() == reflect.Interface {
-		dest = dest.Elem()
-	} else {
-		return errors.Errorf("invalid type for key(%s): %s",
-			key, dest.Kind().String())
-	}
-
-	source := reflect.ValueOf(value)
-
-	if source.Kind() != dest.Kind() {
-		return errors.Errorf("invalid type for key(%s), need %s, get %s",
-			key, source.Kind().String(), dest.Kind().String())
-	}
-	dest.Set(source)
-
-	return nil
+	return value, ok
 }
 
 func (c *DefaultContext) Clear() {

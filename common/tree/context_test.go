@@ -14,15 +14,15 @@ func TestGet(t *testing.T) {
 	ctx.Set("abc", 123)
 	v, err := tree.Get[int](ctx, "abc")
 	assert.NoError(t, err)
-	assert.Equal(t, 123, *v)
+	assert.Equal(t, 123, v)
 
 	a := &s1{
 		V1: 89312,
 		V2: "njsakdnalskxcas",
 		V3: []bool{true, false, false, true, false},
 	}
-	ctx.Set("cba", *a)
-	b, err := tree.Get[s1](ctx, "cba")
+	ctx.Set("cba", a)
+	b, err := tree.Get[*s1](ctx, "cba")
 	assert.NoError(t, err)
 	assert.True(t, a.Equal(b))
 
@@ -30,11 +30,21 @@ func TestGet(t *testing.T) {
 	ctx.Set("asd", c)
 	d, err := tree.Get[[]*s1](ctx, "asd")
 	assert.NoError(t, err)
-	e := *d
+	e := d
 	assert.Len(t, e, len(c))
 	for i := range e {
 		assert.True(t, e[i].Equal(c[i]))
 	}
+
+	f := &s2{
+		a: 2,
+		b: 3,
+	}
+	ctx.Clear()
+	ctx.Set("abc", f)
+	g, err := tree.Get[i2](ctx, "abc")
+	assert.NoError(t, err)
+	assert.Equal(t, 5, g.Add())
 
 	// ------------ error ------------
 	_, err = tree.Get[int](ctx, "123")
@@ -66,4 +76,16 @@ func (s *s1) Equal(o *s1) bool {
 		}
 	}
 	return true
+}
+
+type i2 interface {
+	Add() int
+}
+
+type s2 struct {
+	a, b int
+}
+
+func (s *s2) Add() int {
+	return s.a + s.b
 }
