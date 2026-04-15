@@ -1,81 +1,62 @@
 package log
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
+	"sync"
 	"time"
 
-	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// AddFileOut only support unix os
-func AddFileOut(logFilePath string, level, days int) error {
-	absPath, err := filepath.Abs(logFilePath)
-	if err != nil {
-		return errors.WithStack(err)
+func AddFileOut(logFilePath string, level, maxSize, maxBackups, maxAge int) error {
+	writer := &lumberjack.Logger{
+		Filename:   logFilePath,
+		MaxSize:    maxSize, // MB
+		MaxBackups: maxBackups,
+		MaxAge:     maxAge,
+		LocalTime:  true,
+		Compress:   true,
 	}
 
-	logDirPath := filepath.Dir(absPath)
-	if _, err = os.Stat(logDirPath); err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(logDirPath, 0755); err != nil {
-				return errors.WithStack(err)
-			}
-		}
-	}
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if err = unix.Access(logDirPath, unix.W_OK); err != nil {
-		return errors.Wrapf(err, "%s is not writable", logDirPath)
+	formatter := &logrus.TextFormatter{
+		DisableTimestamp: false,
+		TimestampFormat:  time.StampMilli,
+		CallerPrettyfier: callerPrettyfier,
 	}
 
-	var logf *rotatelogs.RotateLogs
-	logf, err = rotatelogs.New(
-		absPath+".%Y-%m-%dT%H:%M",
-		rotatelogs.WithLinkName(absPath),
-		rotatelogs.WithMaxAge(time.Duration(days)*24*time.Hour),
-		rotatelogs.WithRotationTime(24*time.Hour),
-	)
-	if err = errors.WithStack(err); err != nil {
-		return err
-	}
-	hook := &fileHook{
-		formatter: &logrus.TextFormatter{
-			DisableTimestamp: false,
-			CallerPrettyfier: callerPrettyfier,
-		},
-		levels: getHookLevel(level),
-		rotate: logf,
+	levels := getHookLevel(level)
+
+	hook := &lumberjackHook{
+		writer:    writer,
+		formatter: formatter,
+		levels:    levels,
 	}
 
 	Entry.Logger.AddHook(hook)
 	return nil
 }
 
-type fileHook struct {
+type lumberjackHook struct {
+	writer    *lumberjack.Logger
 	formatter logrus.Formatter
 	levels    []logrus.Level
-	rotate    *rotatelogs.RotateLogs
+	mu        sync.Mutex
 }
 
-func (hook *fileHook) Fire(entry *logrus.Entry) error {
-	formatBytes, err := hook.formatter.Format(entry)
+func (h *lumberjackHook) Levels() []logrus.Level {
+	return h.levels
+}
+
+func (h *lumberjackHook) Fire(entry *logrus.Entry) error {
+	// formatter 不是并发安全的
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	line, err := h.formatter.Format(entry)
 	if err != nil {
 		return err
 	}
-	_, err = hook.rotate.Write(formatBytes)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "unable to write file on filehook(entry.String)%v", err)
-		return err
-	}
-	return nil
-}
 
-func (hook *fileHook) Levels() []logrus.Level {
-	return hook.levels
+	_, err = h.writer.Write(line)
+	return err
 }

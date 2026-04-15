@@ -204,9 +204,6 @@ func (c *Client) BatchSyncCall(batch []BatchElem) (err error) {
 	requestList := make([]*jsonRPCSendMessage, totalLength)
 	for i := range requestList {
 		requestList[i] = c.newMessage(batch[i].Method, batch[i].Args)
-		if err != nil {
-			return
-		}
 	}
 	batchNum := len(requestList)
 	var buf []byte

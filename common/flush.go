@@ -18,11 +18,14 @@ var (
 	commit    = "not set"
 	buildTime = "not set"
 
+	startTime = time.Now()
+
 	mutex              sync.RWMutex
 	heartBeatLogFields = logrus.Fields{
 		"tags":       "heart_beat",
 		"commit":     commit,
 		"build time": buildTime,
+		"start time": startTime.String(),
 	}
 )
 
