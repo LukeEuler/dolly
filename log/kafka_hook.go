@@ -21,6 +21,7 @@ func AddKafkaHook(topic string, brokers []string, level int) error {
 		getHookLevel(level),
 		&jsonFormatter{
 			DisableTimestamp: false,
+			TimestampFormat:  time.RFC3339Nano,
 			CallerPrettyfier: callerPrettyfier,
 			FieldMap: fieldMap{
 				logrus.FieldKeyMsg: "message",
