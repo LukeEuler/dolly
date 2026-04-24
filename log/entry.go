@@ -12,6 +12,7 @@ import (
 )
 
 var Entry *PkgErrorEntry
+var depth = 3 // depth defines how much of the stacktrace you want.
 
 func init() {
 	e := logrus.NewEntry(logrus.New())
@@ -25,12 +26,13 @@ func init() {
 
 	Entry = &PkgErrorEntry{
 		Entry: e,
-		Depth: 3,
 	}
 }
 
-func SetStackMaxDepth(depth int) {
-	Entry.Depth = depth
+func SetStackMaxDepth(d int) {
+	if d > 0 {
+		depth = d
+	}
 }
 
 func ReportCaller(a bool) {
@@ -77,9 +79,6 @@ func getHookLevel(level int) []logrus.Level {
 
 type PkgErrorEntry struct {
 	*logrus.Entry
-
-	// Depth defines how much of the stacktrace you want.
-	Depth int
 }
 
 func (e *PkgErrorEntry) WithError(err error) *logrus.Entry {
@@ -110,18 +109,14 @@ func (e *PkgErrorEntry) WithError(err error) *logrus.Entry {
 	}
 
 	if st != nil {
-		depth := 3
-		if e.Depth != 0 {
-			depth = e.Depth
-		}
-		var stack string
+		var stack strings.Builder
 		for i, f := range st.StackTrace() {
 			if depth > 0 && i >= depth {
 				break
 			}
-			stack += fmt.Sprintf("\n%+v", f)
+			fmt.Fprintf(&stack, "\n%+v", f)
 		}
-		out = out.WithField("stack", stack)
+		out = out.WithField("stack", stack.String())
 	}
 
 	return out.WithError(err)
