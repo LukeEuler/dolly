@@ -11,7 +11,7 @@ import (
 )
 
 // Tentacle implement ITentacle
-type Tentacle[T any] struct {
+type Tentacle[T Cloner[T]] struct {
 	mutex sync.RWMutex
 
 	// worker 工厂，将具体的业务逻辑从 tentacle 中剥离
@@ -65,7 +65,7 @@ func (c *cursor) copy() cursor {
 }
 
 // NewTentacle new Tentacle
-func NewTentacle[T any](concurrent, redundancy, reservedLength int64, wf Factory[T]) *Tentacle[T] {
+func NewTentacle[T Cloner[T]](concurrent, redundancy, reservedLength int64, wf Factory[T]) *Tentacle[T] {
 	// concurrent>=1, redundancy>=2,reservedLength>=1
 	concurrent = max(concurrent, 1)
 	redundancy = max(redundancy, 2)
@@ -207,7 +207,7 @@ func (t *Tentacle[T]) readFromReserved(sequence int64) (T, error) {
 				return res, errors.Errorf("something wrong: miss %d(reserved min %d, max %d)",
 					sequence, cursorState.reservedAreaMin, cursorState.reservedAreaMax)
 			}
-			return res, nil
+			return res.Clone(), nil
 		}
 		// 涉及写锁
 		t.readOneFromQueue()
