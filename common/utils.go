@@ -3,6 +3,7 @@ package common
 import (
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,34 +25,20 @@ func TraceTime() func() {
 }
 
 // IsNil checks if a specified object is nil or not, without Failing.
-// from: https://github.com/stretchr/testify/blob/master/assert/assertions.go#L647
+// from: https://github.com/stretchr/testify/blob/master/assert/assertions.go#L719
 func IsNil(object any) bool {
 	if object == nil {
 		return true
 	}
 
 	value := reflect.ValueOf(object)
-	kind := value.Kind()
-	isNilableKind := containsKind(
-		[]reflect.Kind{
-			reflect.Chan, reflect.Func,
-			reflect.Interface, reflect.Map,
-			reflect.Ptr, reflect.Slice, reflect.UnsafePointer},
-		kind)
+	switch value.Kind() {
+	case
+		reflect.Chan, reflect.Func,
+		reflect.Interface, reflect.Map,
+		reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
 
-	if isNilableKind && value.IsNil() {
-		return true
-	}
-
-	return false
-}
-
-// containsKind checks if a specified kind in the slice of kinds.
-func containsKind(kinds []reflect.Kind, kind reflect.Kind) bool {
-	for i := 0; i < len(kinds); i++ {
-		if kind == kinds[i] {
-			return true
-		}
+		return value.IsNil()
 	}
 
 	return false
@@ -75,12 +62,7 @@ func FormatHexString(content string) string {
 type CheckList []string
 
 func (l *CheckList) Contains(value string) bool {
-	for _, item := range *l {
-		if item == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(*l, value)
 }
 
 func (l *CheckList) AddNoChange(al *CheckList) *CheckList {
