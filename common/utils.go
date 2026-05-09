@@ -9,17 +9,18 @@ import (
 	"github.com/LukeEuler/dolly/log"
 )
 
-// TimeConsume provides convenience function for time-consuming calculation
-func TimeConsume(start time.Time) {
+func TraceTime() func() {
+	start := time.Now()
 	pc, _, _, ok := runtime.Caller(1)
 	if !ok {
-		return
+		return func() {}
 	}
-
-	// get Fun object from pc
 	funcName := runtime.FuncForPC(pc).Name()
-	log.Entry.WithField("tags", "func_time_consume").
-		WithField("cost", time.Since(start).String()).Debug(funcName)
+	return func() {
+		log.Entry.WithField("tags", "func_time_consume").
+			WithField("cost", time.Since(start).String()).
+			Debug(funcName)
+	}
 }
 
 // IsNil checks if a specified object is nil or not, without Failing.

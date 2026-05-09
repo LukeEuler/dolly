@@ -30,7 +30,7 @@ func OpenGorm(connectStr string, fileds logrus.Fields) (*gorm.DB, error) {
 }
 
 func StopDB(db *gorm.DB) error {
-	defer TimeConsume(time.Now())
+	defer TraceTime()()
 	if db == nil {
 		return nil
 	}
@@ -45,7 +45,7 @@ func StopDB(db *gorm.DB) error {
 }
 
 func StopDBV2(db *gorm.DB) {
-	defer TimeConsume(time.Now())
+	defer TraceTime()()
 	if db == nil {
 		return
 	}
@@ -95,7 +95,7 @@ func WithTransaction(db *gorm.DB, f func(db *gorm.DB) error) error {
 
 // HandleDBTX 封装对事务的处理
 func HandleDBTX(db *gorm.DB, f func(*gorm.DB, Context) error, ctx Context) error {
-	defer TimeConsume(time.Now())
+	defer TraceTime()()
 	dbTx := db.Begin()
 	var err error
 	defer RecoverV2(dbTx, &err)
