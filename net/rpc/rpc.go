@@ -152,6 +152,9 @@ func DefaultHandler(res []byte, target any) error {
 	if resMsg.Error != nil {
 		return errors.WithStack(resMsg.Error)
 	}
+	if resMsg.Result == nil || string(resMsg.Result) == "null" {
+		return errors.New(string(res))
+	}
 	err = json.Unmarshal(resMsg.Result, &target)
 	return errors.Wrapf(err, "unmarshaling json rpc result: %s", string(res))
 }
@@ -196,10 +199,10 @@ func (c *Client) syncRequest(msg *jsonRPCSendMessage) (buf []byte, err error) {
 }
 
 // BatchSyncCall batch SyncCall and will cut batch request when enableMaxBatch is true and 0 < maxBatchNum < len(batch request)
-func (c *Client) BatchSyncCall(batch []BatchElem) (err error) {
+func (c *Client) BatchSyncCall(batch []BatchElem) error {
 	totalLength := len(batch)
 	if totalLength == 0 {
-		return
+		return nil
 	}
 	requestList := make([]*jsonRPCSendMessage, totalLength)
 	for i := range requestList {
@@ -207,35 +210,59 @@ func (c *Client) BatchSyncCall(batch []BatchElem) (err error) {
 	}
 	batchNum := len(requestList)
 	var buf []byte
+	var bodyStr string
+	var err error
 	responseList := make([]*jsonRPCReceiveMessage, 0, totalLength)
 	if !c.enableMaxBatch || c.maxBatchNum <= 0 || batchNum <= c.maxBatchNum {
 		log.Entry.Debugf("try batch [%d]", batchNum)
 		buf, err = c.batchSyncRequest(requestList)
 		if err != nil {
-			return
+			return err
 		}
 		err = json.Unmarshal(buf, &responseList)
 		if err != nil {
-			err = errors.Errorf("can not paste the content into []*jsonRPCReceiveMessage: %s", string(buf))
-			return
+			if len(buf) > 300 {
+				bodyStr = string(buf[:150])
+				bodyStr = strings.ToValidUTF8(bodyStr, "") + "..."
+			} else {
+				bodyStr = string(buf)
+			}
+			return errors.Wrapf(err, "body: %s", bodyStr)
 		}
 	} else {
+		retry := false
 		for i, j := 0, c.maxBatchNum; true; {
 			if batchNum < j {
 				j = batchNum
 			}
-
 			log.Entry.Debugf("try batch [%d,%d), total %d", i, j, batchNum)
 			buf, err = c.batchSyncRequest(requestList[i:j])
 			if err != nil {
-				return
+				if retry {
+					return err
+				}
+				log.Entry.Error(err)
+				retry = true
+				continue
 			}
 			tempResMsgs := make([]*jsonRPCReceiveMessage, 0)
 			err = json.Unmarshal(buf, &tempResMsgs)
 			if err != nil {
-				err = errors.Errorf("can not paste the content into []*jsonRPCReceiveMessage: %s", string(buf))
-				return
+				if len(buf) > 300 {
+					bodyStr = string(buf[:150])
+					bodyStr = strings.ToValidUTF8(bodyStr, "") + "..."
+				} else {
+					bodyStr = string(buf)
+				}
+				err = errors.Wrapf(err, "body: %s", bodyStr)
+				if retry {
+					return err
+				}
+				log.Entry.Error(err)
+				retry = true
+				continue
 			}
+			retry = false
 			responseList = append(responseList, tempResMsgs...)
 			i += c.maxBatchNum
 			j += c.maxBatchNum
