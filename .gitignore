@@ -20,3 +20,5 @@ vendor/
 .vscode
 
 main.go
+
+.ai/ledev/

@@ -151,3 +151,26 @@ func TestNewTentacleV2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, mint64(114), value)
 }
+
+func TestStopDiscardsStaleResult(t *testing.T) {
+	tentacle := NewTentacle(1, 2, 1, testNewFactory(testHandleSequenceV1))
+	staleGeneration := tentacle.generation
+
+	tentacle.Stop()
+	tentacle.writeResult(staleGeneration, &box[mint64]{
+		sequence: 1,
+		result:   111,
+	})
+
+	assert.Empty(t, tentacle.queue)
+	assert.Empty(t, tentacle.cacheArea)
+	assert.Zero(t, tentacle.cursor.lastQueueSequence)
+
+	tentacle.writeResult(tentacle.generation, &box[mint64]{
+		sequence: 1,
+		result:   111,
+	})
+
+	assert.Len(t, tentacle.queue, 1)
+	assert.Equal(t, int64(1), tentacle.cursor.lastQueueSequence)
+}

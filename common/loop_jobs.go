@@ -23,13 +23,11 @@ func DoLoopJobs(jobs ...func(chan struct{})) {
 
 	var wg sync.WaitGroup
 
-	for index := range jobs {
-		wg.Add(1)
-		job := jobs[index]
-		go func() {
-			defer wg.Done()
+	for _, item := range jobs {
+		job := item
+		wg.Go(func() {
 			job(shutdown)
-		}()
+		})
 	}
 
 	wg.Wait()

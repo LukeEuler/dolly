@@ -12,7 +12,8 @@ import (
 
 // Tentacle implement ITentacle
 type Tentacle[T Cloner[T]] struct {
-	mutex sync.RWMutex
+	mutex      sync.RWMutex
+	generation uint64
 
 	// worker 工厂，将具体的业务逻辑从 tentacle 中剥离
 	generate Factory[T]
@@ -95,8 +96,9 @@ func NewTentacle[T Cloner[T]](concurrent, redundancy, reservedLength int64, wf F
 }
 
 func (t *Tentacle[T]) Stop() {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.generation++
 	t.inputs = make(chan int64, t.workLength)
 	t.outputs = make(chan *box[T], t.workLength)
 	t.queue = make(chan *box[T], t.workLength)
@@ -151,15 +153,16 @@ func (t *Tentacle[T]) startWork(sequence int64) error {
 		}
 	}
 
+	outputs := t.outputs
 	for i := int64(0); i < t.concurrent; i++ {
 		worker, err := t.generate()
 		if err != nil {
 			return err
 		}
-		go worker(t.inputs, t.outputs)
+		go worker(t.inputs, outputs)
 	}
 
-	t.writeResults()
+	t.writeResults(outputs, t.generation)
 	t.cursor.workStarted = true
 	return nil
 }
@@ -250,19 +253,22 @@ func (t *Tentacle[T]) readOneFromQueue() {
 	}
 }
 
-func (t *Tentacle[T]) writeResults() {
+func (t *Tentacle[T]) writeResults(outputs chan *box[T], generation uint64) {
 	go func() {
-		for item := range t.outputs {
-			t.writeResult(item)
+		for item := range outputs {
+			t.writeResult(generation, item)
 		}
 	}()
 }
 
-func (t *Tentacle[T]) writeResult(item *box[T]) {
+func (t *Tentacle[T]) writeResult(generation uint64, item *box[T]) {
 	// 此时能够拿到数据，一定是 cursor.workStarted == true
 	// 且 cursor.lastQueueSequence = sequence - 1，初始化完成了
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
+	if generation != t.generation {
+		return
+	}
 	if item.err != nil {
 		log.Entry.WithError(item.err).Error(item.err)
 		// item.sequence <= t.cursor.maxSequence
