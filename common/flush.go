@@ -54,6 +54,24 @@ func Flush(shutdown chan struct{}) {
 	}
 }
 
+// FlushWithContext is the context-aware heartbeat loop used by
+// DoLoopJobsWithSingleton.
+func FlushWithContext(ctx LoopContext) error {
+	timer := time.NewTimer(minDuration)
+	defer timer.Stop()
+	interval := time.Minute
+	for {
+		select {
+		case <-ctx.Done():
+			log.Entry.Warnln("stop flush")
+			return nil
+		case <-timer.C:
+			log.Entry.WithFields(heartBeatLogFields).Info()
+			timer.Reset(interval)
+		}
+	}
+}
+
 /*
 在 extra 添加额外信息
 */

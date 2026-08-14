@@ -21,6 +21,49 @@ type SingletonHandler struct {
 	refreshInterval, expiredInterval int
 }
 
+// LoopWithContext maintains the singleton heartbeat until ctx is cancelled.
+// Any heartbeat error immediately stops the loop and is returned to
+// DoLoopJobsWithSingleton as an emergency shutdown reason. Failure paths do
+// not wait for database cleanup because that would delay emergency shutdown;
+// the process owner must terminate after the returned error.
+func (s *SingletonHandler) LoopWithContext(ctx LoopContext) error {
+	interval := time.Duration(s.refreshInterval) * time.Second
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Entry.Debug("stop singletonHandler")
+			_, err := s.db.Exec("UPDATE uuid_singleton_lock SET last_update_time = 0 WHERE name = ? AND uuid = ?", s.name, s.uuid)
+			if err != nil {
+				_ = s.db.Close()
+				return errors.WithStack(err)
+			}
+			return errors.WithStack(s.db.Close())
+
+		case <-ticker.C:
+			res, err := s.db.Exec("UPDATE uuid_singleton_lock SET last_update_time = ROUND(UNIX_TIMESTAMP(CURTIME(4)) * 1000) WHERE name = ? AND uuid = ?", s.name, s.uuid)
+			if err != nil {
+				err = errors.WithStack(err)
+				ctx.RequestShutdown(err)
+				return err
+			}
+			affected, err := res.RowsAffected()
+			if err != nil {
+				err = errors.WithStack(err)
+				ctx.RequestShutdown(err)
+				return err
+			}
+			if affected != 1 {
+				err = fmt.Errorf("affected %d: UPDATE uuid_singleton_lock SET last_update_time = ROUND(UNIX_TIMESTAMP(CURTIME(4)) * 1000) WHERE name = '%s' AND uuid = '%s'", affected, s.name, s.uuid)
+				ctx.RequestShutdown(err)
+				return err
+			}
+		}
+	}
+}
+
 func NewSingletonHandler(name, source string, refreshInterval, expiredInterval int) (s *SingletonHandler, err error) {
 	s = &SingletonHandler{
 		name:            name,

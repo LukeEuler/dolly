@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860" role="img" aria-labelledby="title desc">
+  <title id="title">DoLoopJobsWithSingleton 运作图</title>
+  <desc id="desc">图示 Singleton Loop 覆盖普通 Loop 的生命周期，并对比正常关闭和锁失效时的关闭顺序与默认超时。</desc>
+
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#172033" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrow-neutral" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#718096"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7557D9"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#14845F"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#CF3F4E"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .title { font-size: 30px; font-weight: 720; letter-spacing: -0.4px; }
+      .subtitle { font-size: 15px; fill: #657189; }
+      .section-num { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+      .section-title { font-size: 19px; font-weight: 700; }
+      .label { font-size: 15px; font-weight: 650; }
+      .body { font-size: 14px; }
+      .small { font-size: 12px; fill: #657189; }
+      .tiny { font-size: 11px; fill: #657189; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      .inverse { fill: #FFFFFF; }
+      .inverse-green { fill: #E4F7F0; }
+      .inverse-red { fill: #FFE8EA; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="860" fill="#F6F8FC"/>
+
+  <text class="title" x="48" y="52">DoLoopJobsWithSingleton 如何运作</text>
+  <text class="subtitle" x="48" y="79">Singleton 锁的生命周期覆盖所有业务 Loop；关闭原因决定资源退出顺序</text>
+
+  <!-- 01: lifecycle model -->
+  <g aria-label="运行模型">
+    <rect x="40" y="104" width="1120" height="292" rx="18" fill="#FFFFFF" stroke="#DFE4EE" filter="url(#shadow)"/>
+    <text class="section-num" x="68" y="137" fill="#7557D9">01</text>
+    <text class="section-title" x="100" y="138">运行模型</text>
+    <text class="small" x="1082" y="137" text-anchor="end">一个 Singleton · 多个 Ordinary</text>
+
+    <!-- scheduler card -->
+    <rect x="68" y="173" width="194" height="160" rx="14" fill="#F7F5FF" stroke="#CFC4F4"/>
+    <circle cx="97" cy="203" r="14" fill="#7557D9"/>
+    <path d="M93 196 L103 203 L93 210 Z" fill="#FFFFFF"/>
+    <text class="label mono" x="120" y="208">调度器</text>
+    <text class="body" x="88" y="245">启动 Singleton Loop</text>
+    <text class="body" x="88" y="271">并行启动 Ordinary Loops</text>
+    <line x1="88" y1="290" x2="240" y2="290" stroke="#DED8F5"/>
+    <text class="small" x="88" y="314">统一接收信号和退出事件</text>
+
+    <path d="M270 253 H306" fill="none" stroke="#7557D9" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+    <!-- singleton lifetime envelope -->
+    <rect x="316" y="158" width="806" height="205" rx="16" fill="#FBFAFF" stroke="#8C72E4" stroke-width="2"/>
+    <rect x="316" y="158" width="806" height="57" rx="16" fill="#EEE9FF"/>
+    <path d="M316 199 V215 H1122 V199" fill="#EEE9FF"/>
+
+    <!-- lock icon -->
+    <rect x="342" y="181" width="20" height="16" rx="3" fill="none" stroke="#6546CC" stroke-width="2"/>
+    <path d="M347 181 V176 A5 5 0 0 1 357 176 V181" fill="none" stroke="#6546CC" stroke-width="2"/>
+    <circle cx="352" cy="188" r="1.8" fill="#6546CC"/>
+    <text class="label" x="374" y="190" fill="#5137AA">Singleton Loop</text>
+    <text class="small" x="374" y="208" fill="#7557D9">持续维护单实例锁</text>
+
+    <circle cx="600" cy="186" r="5" fill="#7557D9"/>
+    <path d="M608 186 H1035" fill="none" stroke="#8C72E4" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#arrow-purple)"/>
+    <text class="small" x="821" y="178" text-anchor="middle" fill="#6546CC">心跳持续成功，锁保持有效</text>
+
+    <!-- ordinary loops -->
+    <text class="small" x="342" y="242">并行运行</text>
+    <rect x="342" y="258" width="218" height="65" rx="11" fill="#EDF5FF" stroke="#A9C9F4"/>
+    <circle cx="365" cy="282" r="7" fill="#3977C5"/>
+    <path d="M362 282 L365 285 L370 278" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="382" y="286" fill="#245C9E">Ordinary Loop A</text>
+    <text class="small" x="365" y="307">业务处理</text>
+
+    <rect x="579" y="258" width="218" height="65" rx="11" fill="#EDF5FF" stroke="#A9C9F4"/>
+    <circle cx="602" cy="282" r="7" fill="#3977C5"/>
+    <path d="M599 282 L602 285 L607 278" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="619" y="286" fill="#245C9E">Ordinary Loop B</text>
+    <text class="small" x="602" y="307">心跳日志</text>
+
+    <rect x="816" y="258" width="278" height="65" rx="11" fill="#EDF5FF" stroke="#A9C9F4"/>
+    <circle cx="839" cy="282" r="7" fill="#3977C5"/>
+    <path d="M836 282 L839 285 L844 278" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="856" y="286" fill="#245C9E">Ordinary Loop …</text>
+    <text class="small" x="839" y="307">后台任务等</text>
+
+    <!-- lifecycle bracket -->
+    <path d="M342 337 V345 H1094 V337" fill="none" stroke="#7557D9" stroke-width="1.5"/>
+    <text class="tiny" x="718" y="357" text-anchor="middle" fill="#6546CC">Singleton 生命周期覆盖全部 Ordinary Loops</text>
+  </g>
+
+  <!-- escalation notice -->
+  <g aria-label="关闭升级说明">
+    <path d="M562 426 H640" fill="none" stroke="#CF3F4E" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#arrow-red)"/>
+    <rect x="442" y="410" width="316" height="32" rx="16" fill="#FFF3F4" stroke="#F0B5BB"/>
+    <path d="M461 421 L469 434 H453 Z" fill="none" stroke="#CF3F4E" stroke-width="1.6" stroke-linejoin="round"/>
+    <line x1="461" y1="425" x2="461" y2="429" stroke="#CF3F4E" stroke-width="1.6"/>
+    <circle cx="461" cy="432" r="1" fill="#CF3F4E"/>
+    <text class="small" x="481" y="431" fill="#B62F3E">正常关闭期间锁失效：立即升级为紧急关闭</text>
+  </g>
+
+  <!-- 02: graceful shutdown -->
+  <g aria-label="正常关闭路径">
+    <rect x="40" y="462" width="548" height="350" rx="18" fill="#FFFFFF" stroke="#CFE5DC" filter="url(#shadow)"/>
+    <rect x="40" y="462" width="548" height="61" rx="18" fill="#EBF7F2"/>
+    <path d="M40 505 V523 H588 V505" fill="#EBF7F2"/>
+    <text class="section-num" x="68" y="497" fill="#14845F">02A</text>
+    <text class="section-title" x="112" y="498" fill="#116B4F">正常关闭</text>
+    <rect x="456" y="479" width="104" height="27" rx="13.5" fill="#D5EFE5"/>
+    <text class="small" x="508" y="497" text-anchor="middle" fill="#116B4F">有序释放资源</text>
+
+    <text class="small" x="68" y="550">触发：SIGINT / SIGTERM · Ordinary 请求关闭或返回</text>
+
+    <rect x="68" y="570" width="492" height="47" rx="10" fill="#F4FBF8" stroke="#A9D7C6"/>
+    <circle cx="94" cy="594" r="13" fill="#14845F"/>
+    <text class="small inverse" x="94" y="598" text-anchor="middle">1</text>
+    <text class="label" x="119" y="599">取消所有 Ordinary Loops</text>
+
+    <path d="M314 617 V632" fill="none" stroke="#14845F" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+    <rect x="68" y="636" width="492" height="56" rx="10" fill="#F4FBF8" stroke="#A9D7C6"/>
+    <circle cx="94" cy="664" r="13" fill="#14845F"/>
+    <text class="small inverse" x="94" y="668" text-anchor="middle">2</text>
+    <text class="label" x="119" y="659">等待清理并全部返回</text>
+    <text class="small" x="119" y="680">默认上限 30 秒 · 此时 Singleton 仍维持锁</text>
+
+    <path d="M314 692 V707" fill="none" stroke="#14845F" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+    <rect x="68" y="711" width="300" height="67" rx="10" fill="#F4FBF8" stroke="#A9D7C6"/>
+    <circle cx="94" cy="744" r="13" fill="#14845F"/>
+    <text class="small inverse" x="94" y="748" text-anchor="middle">3</text>
+    <text class="label" x="119" y="739">取消 Singleton Loop</text>
+    <text class="small" x="119" y="760">释放单实例锁</text>
+
+    <path d="M368 744 H389" fill="none" stroke="#14845F" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <rect x="394" y="711" width="166" height="67" rx="10" fill="#14845F"/>
+    <text class="label inverse" x="477" y="739" text-anchor="middle">调度器返回</text>
+    <text class="small inverse-green" x="477" y="760" text-anchor="middle">nil 或业务错误</text>
+  </g>
+
+  <!-- 02: emergency shutdown -->
+  <g aria-label="锁失效紧急关闭路径">
+    <rect x="612" y="462" width="548" height="350" rx="18" fill="#FFFFFF" stroke="#F0C9CD" filter="url(#shadow)"/>
+    <rect x="612" y="462" width="548" height="61" rx="18" fill="#FFF0F1"/>
+    <path d="M612 505 V523 H1160 V505" fill="#FFF0F1"/>
+    <text class="section-num" x="640" y="497" fill="#CF3F4E">02B</text>
+    <text class="section-title" x="684" y="498" fill="#A92E3A">锁失效</text>
+    <rect x="1025" y="479" width="107" height="27" rx="13.5" fill="#F9DADD"/>
+    <text class="small" x="1078.5" y="497" text-anchor="middle" fill="#A92E3A">紧急停止进程</text>
+
+    <text class="small" x="640" y="550">触发：心跳失败 · 锁记录异常 · Singleton 意外停止</text>
+
+    <rect x="640" y="570" width="492" height="47" rx="10" fill="#FFF7F7" stroke="#EDB0B7"/>
+    <circle cx="666" cy="594" r="13" fill="#CF3F4E"/>
+    <text class="small inverse" x="666" y="598" text-anchor="middle">1</text>
+    <text class="label" x="691" y="599">立即取消 Singleton 和所有 Ordinary Loops</text>
+
+    <path d="M886 617 V632" fill="none" stroke="#CF3F4E" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+    <rect x="640" y="636" width="492" height="56" rx="10" fill="#FFF7F7" stroke="#EDB0B7"/>
+    <circle cx="666" cy="664" r="13" fill="#CF3F4E"/>
+    <text class="small inverse" x="666" y="668" text-anchor="middle">2</text>
+    <text class="label" x="691" y="659">最多等待 1 秒</text>
+    <text class="small" x="691" y="680">异常路径不等待数据库清理</text>
+
+    <path d="M886 692 V707" fill="none" stroke="#CF3F4E" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+    <rect x="640" y="711" width="300" height="67" rx="10" fill="#FFF7F7" stroke="#EDB0B7"/>
+    <circle cx="666" cy="744" r="13" fill="#CF3F4E"/>
+    <text class="small inverse" x="666" y="748" text-anchor="middle">3</text>
+    <text class="label" x="691" y="739">调度器返回错误</text>
+    <text class="small" x="691" y="760">锁错误或关闭超时</text>
+
+    <path d="M940 744 H961" fill="none" stroke="#CF3F4E" stroke-width="2" marker-end="url(#arrow-red)"/>
+    <rect x="966" y="711" width="166" height="67" rx="10" fill="#CF3F4E"/>
+    <text class="label inverse" x="1049" y="739" text-anchor="middle">main 退出</text>
+    <text class="small inverse-red" x="1049" y="760" text-anchor="middle">非零状态码</text>
+  </g>
+
+  <!-- footer note -->
+  <g aria-label="超时说明">
+    <circle cx="57" cy="836" r="8" fill="#E7EAF1"/>
+    <text class="tiny" x="57" y="840" text-anchor="middle">i</text>
+    <text class="small" x="74" y="841">超时表示调度器停止等待并返回错误；Go 不会强杀单个 goroutine，最终由 main 终止整个进程。</text>
+  </g>
+</svg>

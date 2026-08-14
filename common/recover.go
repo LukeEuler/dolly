@@ -22,11 +22,28 @@ example：
 */
 func Recover() {
 	if r := recover(); r != nil {
-		err := fmt.Errorf("%v\nstacktrace from panic: %s", r, string(debug.Stack()))
-		log.Entry.Error(err)
-		// 以防 log 失效
-		fmt.Printf("\n------------- avoid log failure -------------\n%s\n---------------------------------------------\n",
-			err)
+		logPanic(r)
+	}
+}
+
+// RecoverExitCode records a panic and changes a named main return code to 1.
+// It is intended for use with os.Exit(runMain()).
+//
+//	func main() {
+//		os.Exit(runMain())
+//	}
+//
+//	func runMain() (exitCode int) {
+//		defer common.RecoverExitCode(&exitCode)
+//		// ...
+//		return 0
+//	}
+func RecoverExitCode(exitCode *int) {
+	if r := recover(); r != nil {
+		logPanic(r)
+		if exitCode != nil {
+			*exitCode = 1
+		}
 	}
 }
 
@@ -54,4 +71,12 @@ func RecoverV2(dbTx *gorm.DB, err *error) {
 		SilentlyRollback(dbTx)
 		return
 	}
+}
+
+func logPanic(r any) {
+	err := fmt.Errorf("%v\nstacktrace from panic: %s", r, string(debug.Stack()))
+	log.Entry.Error(err)
+	// 以防 log 失效
+	fmt.Printf("\n------------- avoid log failure -------------\n%s\n---------------------------------------------\n",
+		err)
 }
