@@ -25,7 +25,7 @@ func ExampleGetCurlCommand() {
 	fmt.Println(command)
 
 	// Output:
-	// curl -X 'POST' -d 'age=10&name=Hudson' -H 'Api_key: 123' 'http://foo.com/cats' --compressed
+	// curl -X 'POST' -d 'age=10&name=Hudson' -H 'Api_key: REDACTED' 'http://foo.com/cats' --compressed
 }
 
 func ExampleGetCurlCommand_json() {
@@ -120,7 +120,7 @@ func ExampleGetCurlCommand_other() {
 		panic(err)
 	}
 	fmt.Println(command)
-	// Output: curl -X 'PUT' -d '{"hello":"world","answer":42}' -H 'Content-Type: application/json' -H 'X-Auth-Token: private-token' 'http://www.example.com/abc/def.ghi?jlk=mno&pqr=stu' --compressed
+	// Output: curl -X 'PUT' -d '{"hello":"world","answer":42}' -H 'Content-Type: application/json' -H 'X-Auth-Token: REDACTED' 'http://www.example.com/abc/def.ghi?jlk=mno&pqr=stu' --compressed
 }
 
 func ExampleGetCurlCommand_https() {
@@ -139,7 +139,7 @@ func ExampleGetCurlCommand_https() {
 		panic(err)
 	}
 	fmt.Println(command)
-	// Output: curl -k -X 'PUT' -d '{"hello":"world","answer":42}' -H 'Content-Type: application/json' -H 'X-Auth-Token: private-token' 'https://www.example.com/abc/def.ghi?jlk=mno&pqr=stu' --compressed
+	// Output: curl -k -X 'PUT' -d '{"hello":"world","answer":42}' -H 'Content-Type: application/json' -H 'X-Auth-Token: REDACTED' 'https://www.example.com/abc/def.ghi?jlk=mno&pqr=stu' --compressed
 }
 
 // Benchmark test for GetCurlCommand
@@ -181,5 +181,66 @@ func TestGetCurlCommand_serverSide(t *testing.T) {
 	exp := fmt.Sprintf("curl -X 'GET' -H 'Accept-Encoding: gzip' -H 'User-Agent: Go-http-client/1.1' '%s/' --compressed", svr.URL)
 	if out := string(data); out != exp {
 		t.Errorf("act: %s, exp: %s", out, exp)
+	}
+}
+
+func TestGetCurlCommand_redactsSensitiveValuesByDefault(t *testing.T) {
+	req, err := http.NewRequest(http.MethodPost, "https://user:hunter2@node.example.com/rpc?apiKey=live_abc123&chain=eth", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.SetBasicAuth("nodeuser", "s3cr3t-node-password")
+	req.Header.Set("X-Api-Key", "live_key_abcdef")
+	req.Header.Set("Content-Type", "application/json")
+
+	command, err := GetCurlCommand(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := command.String()
+
+	for _, leaked := range []string{"hunter2", "live_abc123", "s3cr3t-node-password", "live_key_abcdef"} {
+		if strings.Contains(got, leaked) {
+			t.Fatalf("sensitive value leaked into curl command: %q in %s", leaked, got)
+		}
+	}
+	for _, expected := range []string{"user:REDACTED@node.example.com", "apiKey=REDACTED", "'Authorization: REDACTED'", "'X-Api-Key: REDACTED'", "'Content-Type: application/json'"} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("expected %q in %s", expected, got)
+		}
+	}
+}
+
+func TestGetCurlCommand_withSensitiveDataPreservesValues(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "https://user:hunter2@node.example.com/rpc?token=tok_zzz", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("X-Auth-Token", "private-token")
+
+	command, err := GetCurlCommand(req, WithCurlSensitiveData())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := command.String()
+
+	for _, expected := range []string{"hunter2", "tok_zzz", "private-token"} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("expected sensitive value %q in %s", expected, got)
+		}
+	}
+	if strings.Contains(got, redactedValue) {
+		t.Fatalf("sensitive-data option unexpectedly redacted output: %s", got)
+	}
+}
+
+func TestRedactURL_keepsQueryOrderWhenNothingToRedact(t *testing.T) {
+	const rawURL = "https://node.example.com/rpc?zeta=1&alpha=2&module=eth"
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := redactURL(u); got != rawURL {
+		t.Fatalf("redactURL changed a URL without sensitive values: got %s want %s", got, rawURL)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 )
@@ -25,14 +26,90 @@ func (c *CurlCommand) String() string {
 }
 
 func bashEscape(str string) string {
-	// nolint
-	return `'` + strings.Replace(str, `'`, `'\''`, -1) + `'`
+	return `'` + strings.ReplaceAll(str, `'`, `'\''`) + `'`
 }
 
-// GetCurlCommand returns a CurlCommand corresponding to an http.Request
-func GetCurlCommand(req *http.Request) (*CurlCommand, error) {
+const redactedValue = "REDACTED"
+
+var sensitiveHeaders = map[string]struct{}{
+	"authorization":       {},
+	"proxy-authorization": {},
+	"cookie":              {},
+	"set-cookie":          {},
+	"x-api-key":           {},
+	"api-key":             {},
+	"api_key":             {},
+	"x-auth-token":        {},
+	"x-access-token":      {},
+}
+
+var sensitiveQueryKeys = map[string]struct{}{
+	"apikey":       {},
+	"api_key":      {},
+	"key":          {},
+	"token":        {},
+	"access_token": {},
+	"secret":       {},
+	"password":     {},
+	"auth":         {},
+}
+
+type curlCommandOptions struct {
+	redactSensitive bool
+}
+
+// CurlCommandOption configures GetCurlCommand.
+type CurlCommandOption func(*curlCommandOptions)
+
+// WithCurlSensitiveData makes GetCurlCommand include sensitive values.
+//
+// The default output is redacted and is safe to place in logs. Use this option
+// only when the command is handled in a trusted environment.
+func WithCurlSensitiveData() CurlCommandOption {
+	return func(options *curlCommandOptions) {
+		options.redactSensitive = false
+	}
+}
+
+func redactURL(u *url.URL) string {
+	redacted := *u
+	changed := false
+
+	if password, ok := u.User.Password(); ok && password != "" {
+		redacted.User = url.UserPassword(u.User.Username(), redactedValue)
+		changed = true
+	}
+
+	if u.RawQuery != "" {
+		query := u.Query()
+		for key := range query {
+			if _, ok := sensitiveQueryKeys[strings.ToLower(key)]; ok {
+				query.Set(key, redactedValue)
+				changed = true
+			}
+		}
+		if changed {
+			redacted.RawQuery = query.Encode()
+		}
+	}
+
+	if !changed {
+		return u.String()
+	}
+	return redacted.String()
+}
+
+// GetCurlCommand returns a CurlCommand corresponding to an http.Request.
+// Sensitive request headers and URL values are redacted by default.
+func GetCurlCommand(req *http.Request, opts ...CurlCommandOption) (*CurlCommand, error) {
 	if req.URL == nil {
 		return nil, fmt.Errorf("getCurlCommand: invalid request, req.URL is nil")
+	}
+	options := curlCommandOptions{redactSensitive: true}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&options)
+		}
 	}
 
 	command := CurlCommand{}
@@ -41,6 +118,9 @@ func GetCurlCommand(req *http.Request) (*CurlCommand, error) {
 
 	schema := req.URL.Scheme
 	requestURL := req.URL.String()
+	if options.redactSensitive {
+		requestURL = redactURL(req.URL)
+	}
 	if schema == "" {
 		schema = "http"
 		if req.TLS != nil {
@@ -69,7 +149,7 @@ func GetCurlCommand(req *http.Request) (*CurlCommand, error) {
 		}
 	}
 
-	var keys []string
+	keys := make([]string, 0, len(req.Header))
 
 	for k := range req.Header {
 		keys = append(keys, k)
@@ -77,7 +157,13 @@ func GetCurlCommand(req *http.Request) (*CurlCommand, error) {
 	sort.Strings(keys)
 
 	for _, k := range keys {
-		command.append("-H", bashEscape(fmt.Sprintf("%s: %s", k, strings.Join(req.Header[k], " "))))
+		value := strings.Join(req.Header[k], " ")
+		if options.redactSensitive {
+			if _, ok := sensitiveHeaders[strings.ToLower(k)]; ok {
+				value = redactedValue
+			}
+		}
+		command.append("-H", bashEscape(fmt.Sprintf("%s: %s", k, value)))
 	}
 
 	command.append(bashEscape(requestURL))
