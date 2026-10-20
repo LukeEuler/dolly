@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+	"uuid"
 
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/LukeEuler/dolly/log"
 )

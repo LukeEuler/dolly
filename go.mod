@@ -1,12 +1,11 @@
 module github.com/LukeEuler/dolly
 
-go 1.26
+go 1.27
 
 require (
 	github.com/IBM/sarama v1.47.0
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
 	github.com/pkg/errors v0.9.1
-	github.com/satori/go.uuid v1.2.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
