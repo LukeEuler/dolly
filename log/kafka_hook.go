@@ -12,6 +12,8 @@ import (
 
 var kafkaVersion = sarama.DefaultVersion
 
+const kafkaTimestampFormat = "2006-01-02T15:04:05.000Z07:00"
+
 func SetKafkaVersion(version sarama.KafkaVersion) {
 	kafkaVersion = version
 }
@@ -19,14 +21,7 @@ func SetKafkaVersion(version sarama.KafkaVersion) {
 func AddKafkaHook(topic string, brokers []string, level int) error {
 	hook, err := newKafkaLogrusHook("group id not set yet!",
 		getHookLevel(level),
-		&jsonFormatter{
-			DisableTimestamp: false,
-			TimestampFormat:  time.RFC3339Nano,
-			CallerPrettyfier: callerPrettyfier,
-			FieldMap: fieldMap{
-				logrus.FieldKeyMsg: "message",
-			},
-		},
+		newKafkaJSONFormatter(),
 		brokers,
 		topic,
 		nil)
@@ -36,6 +31,17 @@ func AddKafkaHook(topic string, brokers []string, level int) error {
 
 	Entry.Logger.AddHook(hook)
 	return nil
+}
+
+func newKafkaJSONFormatter() *jsonFormatter {
+	return &jsonFormatter{
+		DisableTimestamp: false,
+		TimestampFormat:  kafkaTimestampFormat,
+		CallerPrettyfier: callerPrettyfier,
+		FieldMap: fieldMap{
+			logrus.FieldKeyMsg: "message",
+		},
+	}
 }
 
 type kafkaLogrusHook struct {

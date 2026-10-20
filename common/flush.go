@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	blue = 36
+	blue                     = 36
+	heartBeatStartTimeFormat = "2006-01-02 15:04:05 -0700 MST"
 )
 
 var (
@@ -25,9 +26,13 @@ var (
 		"tags":       "heart_beat",
 		"commit":     commit,
 		"build time": buildTime,
-		"start time": startTime.String(),
+		"start time": formatHeartBeatStartTime(startTime),
 	}
 )
+
+func formatHeartBeatStartTime(t time.Time) string {
+	return t.Format(heartBeatStartTimeFormat)
+}
 
 func ShowVersion() {
 	fmt.Printf("\x1b[%dm%s\x1b[0m %s\n", blue, "commit:    ", commit)
