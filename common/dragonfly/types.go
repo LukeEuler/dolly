@@ -37,8 +37,8 @@ type IDragonfly[T any, R any] interface {
 }
 
 func NewWorkerFactory[T any, R any](
-	nextClient func() (tree.Context, error),
-	f func(tree.Context, []T) ([]R, error)) Factory[T, R] {
+	nextClient func() (*tree.Context, error),
+	f func(*tree.Context, []T) ([]R, error)) Factory[T, R] {
 	funcName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 	list := strings.Split(funcName, "/")
 	if len(list) > 0 {

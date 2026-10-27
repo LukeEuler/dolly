@@ -4,21 +4,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+/*
+原接口和独立泛型函数保留作迁移参考。
+Go 1.27 支持具体类型的泛型方法，接口方法仍不能声明类型参数。
+
 type Context interface {
 	Set(key string, value any)
 	get(key string) (any, bool)
 	Clear()
 }
 
-/*
-当前golang泛型不支持不同类型的出现在struct上, 因此用独立函数做功能的补充
-
-	type Context interface {
-		Set(key string, value any)
-		Get[T any](key string) (T, error)
-		Clear()
-	}
-*/
 func Get[T any](ctx Context, key string) (T, error) {
 	var zero T
 	v, ok := ctx.get(key)
@@ -31,26 +26,35 @@ func Get[T any](ctx Context, key string) (T, error) {
 	}
 	return res, nil
 }
+*/
 
-type DefaultContext struct {
+type Context struct {
 	content map[string]any
 }
 
-func (c *DefaultContext) Set(key string, value any) {
+func (c *Context) Set(key string, value any) {
 	c.content[key] = value
 }
 
-func (c *DefaultContext) get(key string) (any, bool) {
+func (c *Context) Get[T any](key string) (T, error) {
+	var zero T
 	value, ok := c.content[key]
-	return value, ok
+	if !ok {
+		return zero, errors.Errorf("no key [%s]", key)
+	}
+	res, ok := value.(T)
+	if !ok {
+		return zero, errors.Errorf("type mismatch for key [%s]", key)
+	}
+	return res, nil
 }
 
-func (c *DefaultContext) Clear() {
+func (c *Context) Clear() {
 	c.content = make(map[string]any, 10)
 }
 
-func NewDefaultContext() Context {
-	return &DefaultContext{
+func NewContext() *Context {
+	return &Context{
 		content: make(map[string]any, 10),
 	}
 }

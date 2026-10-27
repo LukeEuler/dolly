@@ -1,6 +1,6 @@
 package tree
 
-func Walk(n Node, ctx Context) error {
+func Walk(n Node, ctx *Context) error {
 	err := n.Enter(ctx)
 	if err != nil {
 		return n.WrapErr(ctx, err)

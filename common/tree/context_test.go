@@ -9,10 +9,10 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	ctx := tree.NewDefaultContext()
+	ctx := tree.NewContext()
 
 	ctx.Set("abc", 123)
-	v, err := tree.Get[int](ctx, "abc")
+	v, err := ctx.Get[int]("abc")
 	assert.NoError(t, err)
 	assert.Equal(t, 123, v)
 
@@ -22,13 +22,13 @@ func TestGet(t *testing.T) {
 		V3: []bool{true, false, false, true, false},
 	}
 	ctx.Set("cba", a)
-	b, err := tree.Get[*s1](ctx, "cba")
+	b, err := ctx.Get[*s1]("cba")
 	assert.NoError(t, err)
 	assert.True(t, a.Equal(b))
 
 	c := []*s1{a}
 	ctx.Set("asd", c)
-	d, err := tree.Get[[]*s1](ctx, "asd")
+	d, err := ctx.Get[[]*s1]("asd")
 	assert.NoError(t, err)
 	e := d
 	assert.Len(t, e, len(c))
@@ -42,15 +42,27 @@ func TestGet(t *testing.T) {
 	}
 	ctx.Clear()
 	ctx.Set("abc", f)
-	g, err := tree.Get[i2](ctx, "abc")
+	g, err := ctx.Get[i2]("abc")
 	assert.NoError(t, err)
 	assert.Equal(t, 5, g.Add())
 
 	// ------------ error ------------
-	_, err = tree.Get[int](ctx, "123")
+	value, err := ctx.Get[int]("abc")
+	assert.EqualError(t, err, "type mismatch for key [abc]")
+	assert.Zero(t, value)
+
+	ctx.Clear()
+	_, err = ctx.Get[i2]("abc")
+	assert.EqualError(t, err, "no key [abc]")
+	ctx.Set("reused", 42)
+	reused, err := ctx.Get[int]("reused")
+	assert.NoError(t, err)
+	assert.Equal(t, 42, reused)
+
+	_, err = ctx.Get[int]("123")
 	assert.Error(t, err)
 
-	_, err = tree.Get[int](ctx, "asd")
+	_, err = ctx.Get[int]("asd")
 	assert.Error(t, err)
 }
 

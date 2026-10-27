@@ -51,8 +51,8 @@ type ITentacle[T Cloner[T]] interface {
 }
 
 func NewWorkerFactory[T Cloner[T]](
-	nextClient func() (tree.Context, error),
-	f func(tree.Context, int64) (T, error)) Factory[T] {
+	nextClient func() (*tree.Context, error),
+	f func(*tree.Context, int64) (T, error)) Factory[T] {
 	funcName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 	list := strings.Split(funcName, "/")
 	if len(list) > 0 {

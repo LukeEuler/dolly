@@ -8,11 +8,11 @@ import (
 	"github.com/LukeEuler/dolly/common/tree"
 )
 
-func testNextClient() (tree.Context, error) {
+func testNextClient() (*tree.Context, error) {
 	return nil, nil
 }
 
-func func1(_ tree.Context, in []int) ([]int64, error) {
+func func1(_ *tree.Context, in []int) ([]int64, error) {
 	result := make([]int64, 0, len(in))
 	for _, v := range in {
 		result = append(result, int64(v+1000))
