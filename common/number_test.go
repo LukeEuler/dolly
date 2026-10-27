@@ -86,6 +86,14 @@ func TestStringToBigInt(t *testing.T) {
 			big.NewInt(123),
 			false,
 		},
+		{"beyond uint64", "18446744073709551616", new(big.Int).Lsh(big.NewInt(1), 64), false},
+		{"negative integer", "-123", big.NewInt(-123), false},
+		{"scientific integer", "123e0", big.NewInt(123), false},
+		{"scientific scaled", "1e3", nil, true},
+		{"fraction", "1.25", nil, true},
+		{"decimal zero", "123.0", nil, true},
+		{"invalid", "abc", nil, true},
+		{"empty", "", nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

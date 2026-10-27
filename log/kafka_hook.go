@@ -10,7 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var kafkaVersion = sarama.DefaultVersion
+// Preserve the default protocol version used before the Sarama upgrade.
+var kafkaVersion = sarama.V2_1_0_0
 
 const kafkaTimestampFormat = "2006-01-02T15:04:05.000Z07:00"
 

@@ -83,7 +83,7 @@ func (f *jsonFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		data = newData
 	}
 
-	prefixFieldClashes(data, f.FieldMap, entry.HasCaller())
+	prefixFieldClashes(data, f.FieldMap, entry.Caller != nil)
 
 	timestampFormat := f.TimestampFormat
 	if timestampFormat == "" {
@@ -102,7 +102,7 @@ func (f *jsonFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		level = "warn"
 	}
 	data[f.FieldMap.resolve(logrus.FieldKeyLevel)] = level
-	if entry.HasCaller() {
+	if entry.Caller != nil {
 		funcVal := entry.Caller.Function
 		fileVal := fmt.Sprintf("%s:%d", entry.Caller.File, entry.Caller.Line)
 		if f.CallerPrettyfier != nil {
