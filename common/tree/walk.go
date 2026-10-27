@@ -13,7 +13,7 @@ func Walk(n Node, ctx *Context) error {
 		}
 	}
 
-	err = n.Exist(ctx)
+	err = n.Exit(ctx)
 	if err != nil {
 		return n.WrapErr(ctx, err)
 	}

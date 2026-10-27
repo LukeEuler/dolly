@@ -3,7 +3,7 @@ package tree
 type Node interface {
 	GetChildren() []Node
 	Enter(*Context) error
-	Exist(*Context) error
+	Exit(*Context) error
 	WrapErr(*Context, error) error
 }
 
@@ -15,7 +15,7 @@ func (n *DefaultNode) Enter(*Context) error {
 	return nil
 }
 
-func (n *DefaultNode) Exist(_ *Context) error {
+func (n *DefaultNode) Exit(_ *Context) error {
 	return nil
 }
 
